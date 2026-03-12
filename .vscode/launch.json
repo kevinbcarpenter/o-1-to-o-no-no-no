@@ -1,0 +1,125 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "01: Benchmark map vs unordered_map",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/01_benchmark_map_vs_unordered_txn",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "CMake Configure & Build"
+        },
+        {
+            "name": "02: Benchmark Simple",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/02_benchmark_simple_txn",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "CMake Configure & Build"
+        },
+        {
+            "name": "03: Under the Hood",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/03_under_the_hood_txn",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "CMake Configure & Build"
+        },
+        {
+            "name": "04: Pitfall 1 - Bad Hash",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/04_pitfall1_bad_hash_txn",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "CMake Configure & Build"
+        },
+        {
+            "name": "05: Pitfall 1 - Hash Combine",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/05_pitfall1_hash_combine_txn",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "CMake Configure & Build"
+        },
+        {
+            "name": "06: Pitfall 2 - Collision Catastrophe",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/06_pitfall2_collision_catastrophe_txn",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "CMake Configure & Build"
+        },
+        {
+            "name": "07: Pitfall 3 - Rehash",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/07_pitfall3_rehash_txn",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "CMake Configure & Build"
+        },
+        {
+            "name": "08: Pitfall 3 - Reserve Fix",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/08_pitfall3_reserve_fix_txn",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "CMake Configure & Build"
+        },
+        {
+            "name": "09: C++23 flat_map",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/09_cpp23_flat_map_txn",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "CMake Configure & Build"
+        },
+        {
+            "name": "10: C++20 Heterogeneous Lookup",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/10_cpp20_heterogeneous_lookup_txn",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "CMake Configure & Build"
+        },
+        {
+            "name": "11: Iterator Stability",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/11_iterator_stability_txn",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "CMake Configure & Build"
+        },
+        {
+            "name": "12: Decision Framework",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/12_decision_framework_txn",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "CMake Configure & Build"
+        }
+    ]
+}

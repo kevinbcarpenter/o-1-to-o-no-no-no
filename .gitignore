@@ -1,0 +1,34 @@
+# Build
+build/
+cmake-build-*/
+out/
+bin/
+
+# Compiled objects
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+
+# Executables
+*.exe
+*.out
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# Cache
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies
+vcpkg_installed/
+conan/

@@ -1,0 +1,115 @@
+.reveal pre {
+    width: 95%;
+    font-size: 0.55em;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.reveal pre code {
+    max-height: 500px;
+    padding: 15px 20px;
+}
+
+.reveal .section-title h2 {
+    color: #42affa;
+    font-size: 1.8em;
+    text-transform: none;
+}
+
+.reveal .section-title h3 {
+    color: #888;
+    font-size: 0.9em;
+    text-transform: none;
+}
+
+.big-o {
+    font-family: 'Courier New', monospace;
+    color: #ff5555;
+    font-weight: bold;
+}
+
+.big-o-good {
+    font-family: 'Courier New', monospace;
+    color: #50fa7b;
+    font-weight: bold;
+}
+
+.reveal table {
+    border-collapse: collapse;
+    margin: 0 auto;
+}
+
+.reveal table th {
+    background-color: #42affa;
+    color: #000;
+    padding: 8px 16px;
+}
+
+.reveal table td {
+    padding: 8px 16px;
+    border-bottom: 1px solid #444;
+}
+
+.columns {
+    display: flex;
+    gap: 20px;
+}
+
+.columns .col {
+    flex: 1;
+}
+
+.danger {
+    background: rgba(255, 85, 85, 0.15);
+    border-left: 4px solid #ff5555;
+    padding: 10px 20px;
+    text-align: left;
+    margin: 20px auto;
+    width: 85%;
+}
+
+.fix {
+    background: rgba(80, 250, 123, 0.15);
+    border-left: 4px solid #50fa7b;
+    padding: 10px 20px;
+    text-align: left;
+    margin: 20px auto;
+    width: 85%;
+}
+
+.reveal .subtitle {
+    font-size: 0.6em;
+    color: #888;
+}
+
+.reveal h1, .reveal h2, .reveal h3 {
+    text-transform: none;
+}
+
+.reveal .highlight-red {
+    color: #ff5555;
+}
+
+.reveal .highlight-green {
+    color: #50fa7b;
+}
+
+.reveal .highlight-blue {
+    color: #42affa;
+}
+
+/* Hide fragment table rows - keep layout space reserved */
+.reveal table tr.fragment:not(.visible) td {
+    visibility: hidden;
+    border-color: transparent;
+}
+
+/* Restore visibility when fragment becomes visible */
+.reveal table tr.fragment.visible td {
+    visibility: visible;
+    padding: 8px 16px;
+    border-bottom: 1px solid #444;
+}
+
+.reveal .speaker-notes {
+    font-size: 9px;
+}

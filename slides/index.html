@@ -1,0 +1,942 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O(1) or O(no-no-no): Mastering the unordered_map</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css">
+    <link rel="stylesheet" href="css/custom.css">
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ============================================================ -->
+<!-- SECTION 1: Introduction (5 min) -->
+<!-- ============================================================ -->
+
+<!-- Slide 1: Title -->
+<section>
+    <img src="O-1-or-O-no-no-no-title-card.png" style="max-width: 98%; max-height: 98%; border: none; background: none; box-shadow: none;" alt="O(1) or O(no-no-no): Mastering the unordered_map" />
+    <aside class="notes">
+        Welcome. All source code from this talk is available in the GitHub repo.
+        This talk is 50 minutes with 10 minutes for Q&amp;A.
+    </aside>
+</section>
+
+<!-- Slide 2: The Hook -->
+<section>
+    <h2>For decades, we taught C++ with two containers:</h2>
+    <h2><code>std::vector</code> and <code>std::map</code></h2>
+    <p class="fragment" style="font-size: 1.5em; margin-top: 1em; color: #ff5555;">That's wrong.</p>
+    <aside class="notes">
+        Pause for effect. vector is king, but map is no longer its queen.
+    </aside>
+</section>
+
+<!-- Slide 3: The Big Question -->
+<section>
+    <h3>If <code>std::vector</code> is our default sequence container...</h3>
+    <h2 class="fragment" style="margin-top: 1em;">What is our default <em>associative</em> container?</h2>
+    <aside class="notes">
+        Rhetorical. Let the audience think for a beat.
+    </aside>
+</section>
+
+<!-- Slide 4: The Thesis -->
+<section>
+    <h2><code>std::unordered_map</code></h2>
+    <p>The #2 container in modern C++</p>
+    <ol style="margin-top: 1em;">
+        <li class="fragment"><strong>WHY</strong> it's dominant <span class="subtitle">(the data)</span></li>
+        <li class="fragment"><strong>HOW</strong> it works <span class="subtitle">(the internals)</span></li>
+        <li class="fragment"><strong>WHEN</strong> it fails <span class="subtitle">(the pitfalls)</span></li>
+    </ol>
+</section>
+
+<!-- Slide 5: Agenda -->
+<section>
+    <h2>Agenda</h2>
+    <table style="font-size: 0.7em;">
+        <tr class="fragment"><td class="highlight-blue">The Showdown</td><td><code>map</code> vs <code>unordered_map</code></td></tr>
+        <tr class="fragment"><td class="highlight-blue">Under the Hood</td><td>How a hash table really works</td></tr>
+        <tr class="fragment"><td class="highlight-blue">Three Pitfalls</td><td>Hashing, Collisions, Rehashing</td></tr>
+        <tr class="fragment"><td class="highlight-blue">Beyond</td><td>C++23 <code>flat_map</code> &amp; heterogeneous lookup</td></tr>
+        <tr class="fragment"><td class="highlight-blue">Decision Tree</td><td>Your new framework</td></tr>
+    </table>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 2: The Main Event - Benchmarks (12 min) -->
+<!-- ============================================================ -->
+
+<!-- Slide 6: Section Title -->
+<section class="section-title">
+    <h2>Round 1</h2>
+    <h3><code>map</code> vs. <code>unordered_map</code></h3>
+</section>
+
+<!-- Slide 7-8: Vertical stack (optional Red-Black Tree deep dive) -->
+<section>
+    <!-- Slide 7: Red-Black Tree Intro (vertical, optional) -->
+    <section>
+        <h2><code>std::map</code> &mdash; Red-Black Tree</h2>
+        <ul>
+            <li>Guaranteed <span class="big-o">O(log n)</span> lookup, insert, delete</li>
+            <li>Keys always sorted</li>
+            <li>Node-based: pointer-chasing, cache-unfriendly</li>
+            <li>Stable iterators/references across all operations</li>
+        </ul>
+        <p class="fragment" style="font-size: 0.55em; margin-top: 0.5em; color: #888;">Michael Sambol &mdash; <a href="https://youtu.be/qvZGUFHWChY" style="color: #42affa;">youtu.be/qvZGUFHWChY</a></p>
+        <aside class="notes">
+            This is what we all learned. It works. It's predictable. But log(n) adds up at scale.
+        </aside>
+    </section>
+
+    <!-- Slide 8: std::map Pros/Cons (main slide) -->
+    <section>
+        <h3>What is a Red-Black Tree?</h3>
+        <div style="display: flex; gap: 2em; align-items: flex-start; margin-top: 0.5em;">
+            <!-- Left side: Rules -->
+            <div style="text-align: left; font-size: 0.65em; flex: 1;">
+                <p style="margin-bottom: 0.3em;"><strong>Self-balancing rules:</strong></p>
+                <p class="fragment" data-fragment-index="0" style="margin: 0.2em 0;">✓ Each node: red or black</p>
+                <p class="fragment" data-fragment-index="1" style="margin: 0.2em 0;">✓ Root & leaves (nil): black</p>
+                <p class="fragment" data-fragment-index="2" style="margin: 0.2em 0;">✓ Red nodes → only black children</p>
+                <p class="fragment" data-fragment-index="3" style="margin: 0.2em 0;">✓ All paths: same black node count</p>
+                <p class="fragment" data-fragment-index="4" style="margin-top: 0.5em;"><strong>Result:</strong> <span class="big-o">O(log n)</span> guaranteed</p>
+            </div>
+
+            <!-- Right side: Tree diagram (SVG) -->
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                <!-- Root -->
+                <div class="fragment" data-fragment-index="0" style="margin-bottom: 1em;">
+                    <span style="color: #000; background: #000; padding: 8px 14px; border-radius: 4px; font-size: 1.1em; font-weight: bold;">█</span>
+                </div>
+
+                <!-- Tree structure as SVG -->
+                <svg class="fragment" data-fragment-index="1" viewBox="0 0 320 180" style="width: 100%; max-width: 280px; height: auto;">
+                    <!-- Lines to red children -->
+                    <line x1="160" y1="0" x2="80" y2="45" stroke="#666" stroke-width="2"/>
+                    <line x1="160" y1="0" x2="240" y2="45" stroke="#666" stroke-width="2"/>
+
+                    <!-- Red children -->
+                    <circle cx="80" cy="55" r="14" fill="#ff5555"/>
+                    <circle cx="240" cy="55" r="14" fill="#ff5555"/>
+
+                    <!-- Lines to black leaves -->
+                    <line x1="80" y1="70" x2="40" y2="110" stroke="#666" stroke-width="2"/>
+                    <line x1="80" y1="70" x2="120" y2="110" stroke="#666" stroke-width="2"/>
+                    <line x1="240" y1="70" x2="200" y2="110" stroke="#666" stroke-width="2"/>
+                    <line x1="240" y1="70" x2="280" y2="110" stroke="#666" stroke-width="2"/>
+
+                    <!-- Black leaves -->
+                    <rect x="30" y="115" width="20" height="20" fill="#000"/>
+                    <rect x="110" y="115" width="20" height="20" fill="#000"/>
+                    <rect x="190" y="115" width="20" height="20" fill="#000"/>
+                    <rect x="270" y="115" width="20" height="20" fill="#000"/>
+                </svg>
+
+                <!-- Nil nodes indicator -->
+                <div class="fragment" data-fragment-index="2" style="margin-top: 0.8em; font-size: 0.7em; color: #888;">
+                    (nil children below each black node)
+                </div>
+
+                <!-- Final rule -->
+                <div class="fragment" data-fragment-index="3" style="margin-top: 0.5em; font-size: 0.75em; color: #42affa; font-weight: bold;">
+                    → Root (black) + Red child + Black leaf + Nil (black) = 3 black nodes per path ✓
+                </div>
+            </div>
+        </div>
+        <aside class="notes">
+            These simple rules prevent the tree from becoming a long chain. As elements are added or removed, the tree rotates to maintain balance.
+
+Data storage: Actual data lives in the colored nodes (root, red, black). Nil nodes aren't stored in memory—they're a theoretical concept. In code, we use NULL pointers to represent no child here. The nil nodes help us understand why the balancing rules ensure O(log n) performance.
+        </aside>
+    </section>
+</section>
+
+<!-- Slide 9: std::unordered_map -->
+<section>
+    <h2><code>std::unordered_map</code> &mdash; Hash Table</h2>
+    <ul>
+        <li>Average <span class="big-o-good">O(1)</span> lookup, insert, delete</li>
+        <li>Keys unordered</li>
+        <li>Bucket-based: separate chaining (linked lists)</li>
+        <li><em>"Average"</em> is doing heavy lifting in that sentence</li>
+    </ul>
+    <aside class="notes">
+        Emphasis on average-case — this is foreshadowing for the pitfalls section.
+    </aside>
+</section>
+
+<!-- Slide 10: Benchmark Code -->
+<section>
+    <h3>The Benchmark</h3>
+    <pre style="font-size: 0.45em;"><code class="language-cpp" data-trim>
+constexpr int N = 1'000'000;
+
+using Map_t = std::map&lt;std::string, uint32_t&gt;;
+using Hash_t = std::unordered_map&lt;std::string, uint32_t&gt;;
+Map_t ordered;
+Hash_t unordered;
+
+for (int i = 0; i &lt; N; ++i) {
+    std::string txn_id = "TXN" + std::to_string(i);
+    ordered[txn_id] = i * 100;   // amount in cents
+    unordered[txn_id] = i * 100;
+}
+
+// Benchmark: look up all N keys
+auto start = high_resolution_clock::now();
+for (int i = 0; i &lt; N; ++i) {
+    std::string key = "TXN" + std::to_string(i);
+    volatile auto it = ordered.find(key);
+}
+auto map_time = high_resolution_clock::now() - start;
+    </code></pre>
+    <p class="subtitle">src/02_benchmark_simple_txn.cpp</p>
+    <aside class="notes">
+        Simple as possible. Insert N transaction IDs, look up N. Real auth codes, real pattern.<hr/>
+        Not shown is the unordered run but structure of test is the same.
+    </aside>
+</section>
+
+<!-- Slide 11: Benchmark Results Table -->
+<section>
+    <h3>Auth Lookup: map vs unordered_map</h3>
+    <table>
+        <thead>
+            <tr><th>Auth Count</th><th>std::map (ns)</th><th>unordered_map (ns)</th><th>Speedup</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>1,000</td><td>~50</td><td>~18</td><td>2.9x</td></tr>
+            <tr><td>10,000</td><td>~78</td><td>~19</td><td>4.1x</td></tr>
+            <tr><td>100,000</td><td>~112</td><td>~20</td><td>5.5x</td></tr>
+            <tr><td>1,000,000</td><td>~157</td><td>~22</td><td>7.0x</td></tr>
+            <tr><td style="color: #ff5555;">10,000,000</td><td style="color: #ff5555;">~203</td><td style="color: #50fa7b;">~23</td><td style="color: #50fa7b;">8.8x</td></tr>
+        </tbody>
+    </table>
+    <p class="subtitle">src/01_benchmark_map_vs_unordered_txn.cpp</p>
+    <aside class="notes">
+        Map time climbs with N. unordered_map stays flat. This is the O(1) promise in action.
+    </aside>
+</section>
+
+<!-- Slide 12: The Graph Concept -->
+<section>
+    <h3>Lookup Time vs Container Size</h3>
+    <div style="text-align: center; font-size: 0.8em;">
+        <pre style="background: none; box-shadow: none; text-align: left; display: inline-block;">
+Time (ns)
+  200 │                                    ╭── std::map O(log n)
+      │                              ╭─────╯
+  150 │                        ╭─────╯
+      │                  ╭─────╯
+  100 │            ╭─────╯
+      │      ╭─────╯
+   50 │╭─────╯
+      │───────────────────────────────────── std::unordered_map O(1)
+    0 └──────────────────────────────────────
+      1K    10K    100K    1M     10M
+                    Container Size</pre>
+    </div>
+    <aside class="notes">
+        At 10 million auth records, map is nearly 9x slower. In acquirer processing where every millisecond counts at 10K TPS, this is the entire performance budget.
+    </aside>
+</section>
+
+<!-- Slide 13: Takeaway -->
+<section>
+    <h2>At 10 million items, <code>map</code> lookup is</h2>
+    <h1 style="color: #ff5555;">~9x slower</h1>
+    <p style="margin-top: 1em;">At 10,000 TPS, milliseconds become seconds become SLA breaches.</p>
+    <aside class="notes">
+        So why doesn't everyone just use unordered_map? Because of what comes next.
+    </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 3: Under the Hood (10 min) -->
+<!-- ============================================================ -->
+
+<!-- Slide 14: Section Title -->
+<section class="section-title">
+    <h2>Under the Hood</h2>
+    <h3>How <code>std::unordered_map</code> really works</h3>
+</section>
+
+<!-- Slide 15: The Three Steps -->
+<section>
+    <h3>The Pipeline</h3>
+    <div style="font-size: 1.2em; margin-top: 1em; text-align: left; margin-left: 5%;">
+        <p class="fragment"><strong>Step 1:</strong> Key &rarr; <code>std::hash</code> &rarr; <code>size_t</code></p>
+        <p class="fragment"><strong>Step 2:</strong> Hash &rarr; <code>hash % bucket_count()</code> &rarr; Bucket Index</p>
+        <p class="fragment"><strong>Step 3:</strong> Bucket &rarr; Linear scan &rarr; Data</p>
+    </div>
+    <aside class="notes">
+        Three steps. Key goes in, hash comes out, modulo gives us a bucket, we scan the bucket for our key.
+    </aside>
+</section>
+
+<!-- Slide 16: Step 1 - Key to Hash -->
+<section>
+    <h3>Step 1: Key &rarr; Hash</h3>
+    <pre><code class="language-cpp" data-trim>
+std::string mid = "MID_100001";  // Merchant ID
+size_t hash = std::hash&lt;std::string&gt;{}(mid);
+size_t bucket = hash % merchant_cache.bucket_count();
+    </code></pre>
+    <div style="margin-top: 1em; font-size: 0.8em; text-align: left; margin-left: 10%;">
+        <p><code>"MID_100001"</code> &rarr; hash: <code>14923847561023</code> &rarr; bucket: <code>3</code></p>
+        <p><code>"MID_200045"</code> &rarr; hash: <code>82736451928374</code> &rarr; bucket: <code>7</code></p>
+    </div>
+    <p class="subtitle">src/03_under_the_hood_txn.cpp</p>
+    <aside class="notes">
+        std::hash turns your key into a big number. Modulo maps it to a bucket.
+    </aside>
+</section>
+
+<!-- Slide 17: The Merchant Data -->
+<section>
+    <h3>What is a MID?</h3>
+    <pre><code class="language-cpp" data-trim>
+std::vector&lt;std::pair&lt;std::string, std::string&gt;&gt; merchants = {
+    {"MID_100001", "AMAZON WEB SERVICES"},
+    {"MID_200045", "WALMART STORE 3291"},
+    {"MID_300078", "SHELL GAS STATION"},
+    {"MID_400012", "STARBUCKS CORP"},
+    {"MID_500099", "UNITED AIRLINES"},
+    {"MID_600023", "TARGET STORE 1482"}
+};
+    </code></pre>
+    <p style="margin-top: 1.5em;"><strong>MID</strong> = Merchant ID</p>
+    <p>A unique identifier for each merchant (business) in the acquirer's network.</p>
+    <p class="subtitle">src/03_under_the_hood_txn.cpp lines 34-44</p>
+    <aside class="notes">
+        In payment processing, a MID uniquely identifies a merchant. When a transaction arrives, we look up its MID in this cache to find merchant details. This is the perfect use case for unordered_map—fast lookups on a constantly changing set of merchants.
+    </aside>
+</section>
+
+<!-- Slide 18: Step 2 - Bucket Array -->
+<section>
+    <h3>Step 2: The Bucket Array</h3>
+    <pre><code class="language-cpp" data-trim>
+std::cout &lt;&lt; "Size: " &lt;&lt; u_map.size();
+std::cout &lt;&lt; "Bucket count: " &lt;&lt; u_map.bucket_count();
+std::cout &lt;&lt; "Load factor: " &lt;&lt; u_map.load_factor();
+std::cout &lt;&lt; "Max load factor: " &lt;&lt; u_map.max_load_factor();
+    </code></pre>
+    <pre style="background: #1a1a2e; font-size: 0.5em; margin-top: 0.5em;"><code data-trim data-noescape>
+Bucket 0: []
+Bucket 1: [<span style="color: #50fa7b;">"MID_300078"</span>]
+Bucket 2: []
+Bucket 3: [<span style="color: #50fa7b;">"MID_100001"</span>] → [<span style="color: #ff5555;">"MID_500099"</span>]
+Bucket 4: []
+Bucket 5: [<span style="color: #50fa7b;">"MID_200045"</span>]
+    </code></pre>
+    <p class="subtitle">src/03_under_the_hood_txn.cpp</p>
+    <aside class="notes">
+        Each bucket is a slot in the array. Notice bucket 3 has two items chained together — that's a collision. Different MIDS but same modulo.  Unlimited possible keys - pigeonhole principle, multiple keys eventually hash to same bucket.  Separate chaining essential.
+    </aside>
+</section>
+
+<!-- Slide 19: Separate Chaining -->
+<section>
+    <h3>Separate Chaining</h3>
+    <div style="margin-top: 1.5em; text-align: left; margin-left: 5%; font-family: monospace; font-size: 0.85em; line-height: 1.6;">
+        <p><strong>Bucket 3 (head of linked list):</strong></p>
+        <div style="background: rgba(66, 175, 250, 0.1); border-left: 3px solid #42affa; padding: 0.8em; margin: 1em 0; margin-right: 20%;">
+            <p style="margin: 0.3em 0;"><code>"MID_100001"</code> <span style="color: #888;">→</span></p>
+            <p style="margin: 0.3em 0; margin-left: 1.5em;"><code>"MID_500099"</code> <span style="color: #888;">→</span></p>
+            <p style="margin: 0.3em 0; margin-left: 1.5em;"><code>null</code></p>
+        </div>
+    </div>
+    <p style="margin-top: 1.5em;">Each bucket is the head of a <strong>linked list</strong>.</p>
+    <p class="fragment">When two keys hash to the same bucket, they get <strong>chained</strong>.</p>
+    <aside class="notes">
+        When keys collide, they chain together in a linked list at that bucket. This sets up slide 19's critical insight: performance depends entirely on whether collisions are scattered across buckets or concentrated in one. The rest of the presentation explores what causes buckets to overflow with collisions.
+    </aside>
+</section>
+
+<!-- Slide 20: The Key Insight -->
+<section>
+    <h2><span class="big-o-good">O(1)</span> assumes each bucket has ~1 item.</h2>
+    <h2 class="fragment" style="margin-top: 1em;"><span class="big-o">O(n)</span> happens when one bucket has <em>ALL</em> items.</h2>
+    <aside class="notes">
+        This is the entire talk in two sentences. Everything that follows is about what makes buckets overflow.
+    </aside>
+</section>
+
+<!-- Slide 21: Load Factor -->
+<section>
+    <h3>Load Factor</h3>
+    <pre style="background: none; box-shadow: none; font-size: 0.7em;"><code data-trim data-noescape>
+load_factor = size() / bucket_count()
+    </code></pre>
+    <div style="margin-top: 1em;">
+        <p>When <code>load_factor &gt; max_load_factor</code> (default: <strong>1.0</strong>)</p>
+        <div class="danger fragment" style="margin-top: 0.5em;">
+            <strong>REHASH:</strong> Allocate new bucket array → re-hash every element → re-insert all
+        </div>
+    </div>
+    <aside class="notes">
+        The standard tries to keep buckets short by rehashing when the table gets too full. But rehashing itself has costs.
+    </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 4: Three Pitfalls (15 min) -->
+<!-- ============================================================ -->
+
+<!-- Slide 22: Section Title -->
+<section class="section-title">
+    <h2>When <span class="big-o-good">O(1)</span> Becomes <span class="big-o">O(n)</span></h2>
+    <div style="position: relative; display: inline-block;">
+        <img src="pitfalls-illustration.webp" style="margin-top: 1em; max-width: 100%; max-height: 280px;" alt="Pitfalls illustration" />
+        <div class="fragment fade-in-then-out" data-fragment-index="0" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.9); border-radius: 8px; border: 2px solid #ff5555;">
+            <span style="font-size: 1.8em; font-family: 'Courier New', monospace; font-weight: bold; color: #ff5555;">O(NO-NO-NO)</span>
+        </div>
+    </div>
+    <div style="margin-top: 0.8em; font-size: 0.8em; text-align: center;">
+        <p class="fragment" data-fragment-index="1">Pitfall 1: The Bad Hash</p>
+        <p class="fragment" data-fragment-index="2">Pitfall 2: The Collision Catastrophe</p>
+        <p class="fragment" data-fragment-index="3">Pitfall 3: The Hidden Rehash</p>
+    </div>
+    <aside class="notes">
+        Or what I call: O (no-no-no)
+    </aside>
+</section>
+
+<!-- Slide 23: Pitfall 1 Intro -->
+<section>
+    <h2>Pitfall 1: The Bad Hash</h2>
+    <p style="margin-top: 1em;">You need to hash a custom struct.</p>
+    <p class="fragment" style="font-size: 1.3em;">What could go wrong?</p>
+</section>
+
+<!-- Slide 24: Transaction Struct -->
+<section>
+    <h3>The Transaction Struct</h3>
+    <pre><code class="language-cpp" data-trim>
+struct Transaction {
+    std::string merchant_id;
+    std::string card_bin;
+    uint32_t amount_cents;
+    std::string currency;
+
+    bool operator==(const Transaction&amp; other) const {
+        return merchant_id == other.merchant_id
+            &amp;&amp; card_bin == other.card_bin
+            &amp;&amp; amount_cents == other.amount_cents
+            &amp;&amp; currency == other.currency;
+    }
+};
+    </code></pre>
+    <p class="subtitle">src/04_pitfall1_bad_hash_txn.cpp</p>
+    <aside class="notes">
+        Four fields. We need to hash this to use it as a key in our unordered_map.<hr/>
+        == equality operator -> used more then one per bucket.
+    </aside>
+</section>
+
+<!-- Slide 25: Bad vs Good Hash -->
+<section>
+    <h3>Bad Hash vs Good Hash</h3>
+    <div class="columns" style="gap: 10px;">
+        <div class="col">
+            <div class="danger" style="padding: 8px 12px;">
+                <strong style="color: #ff5555;">BAD</strong>
+                <pre style="font-size: 0.4em; margin: 0.5em 0; box-shadow: none;"><code class="language-cpp" data-trim>
+struct BadHash {
+  size_t operator()(
+    const Transaction&amp; t) const {
+    return std::hash&lt;std::string&gt;{}
+      (t.currency);
+  }
+};
+// Only hashes currency
+// 99% "USD" → collision!
+                </code></pre>
+            </div>
+        </div>
+        <div class="col">
+            <div class="fix" style="padding: 8px 12px;">
+                <strong style="color: #50fa7b;">GOOD</strong>
+                <pre style="font-size: 0.4em; margin: 0.5em 0; box-shadow: none;"><code class="language-cpp" data-trim>
+struct GoodHash {
+  size_t operator()(
+    const Transaction&amp; t) const {
+    size_t seed = 0;
+    // Combine ALL fields:
+    seed ^= hash(t.merchant_id);
+    seed ^= hash(t.card_bin);
+    seed ^= hash(t.amount_cents);
+    seed ^= hash(t.currency);
+    return seed;
+  }
+};
+                </code></pre>
+            </div>
+        </div>
+    </div>
+    <p class="subtitle">src/04_pitfall1_bad_hash_txn.cpp</p>
+    <aside class="notes">
+        Left: only hashes currency. 99% USD means 99% collision. Right: combines all fields with the golden ratio constant.<hr/>
+        No one would hash on a single currency field, but mistakes happen more often then you think.
+    </aside>
+</section>
+
+<!-- Slide 26: Things to Think About -->
+<section>
+    <h3>Things to Think About</h3>
+    <div style="display: flex; gap: 1em; margin-top: 1em; font-size: 0.75em;">
+        <div class="fragment" style="flex: 1; background: rgba(66, 175, 250, 0.1); border-top: 3px solid #42affa; padding: 0.8em; border-radius: 4px;">
+            <p style="margin: 0 0 0.4em;"><strong style="color: #42affa;">Cost</strong></p>
+            <p style="margin: 0;">More fields = more computation per lookup. If one field is already unique, hashing the rest is wasted work.</p>
+        </div>
+        <div class="fragment" style="flex: 1; background: rgba(80, 250, 123, 0.1); border-top: 3px solid #50fa7b; padding: 0.8em; border-radius: 4px;">
+            <p style="margin: 0 0 0.4em;"><strong style="color: #50fa7b;">Semantics</strong></p>
+            <p style="margin: 0;">Your hash must match <code>operator==</code>. Only hash the fields that define identity.</p>
+        </div>
+        <div class="fragment" style="flex: 1; background: rgba(255, 85, 85, 0.1); border-top: 3px solid #ff5555; padding: 0.8em; border-radius: 4px;">
+            <p style="margin: 0 0 0.4em;"><strong style="color: #ff5555;">Mutability</strong></p>
+            <p style="margin: 0;">Never hash a field that can change after insertion &mdash; <code>find()</code> will look in the wrong bucket.</p>
+        </div>
+    </div>
+</section>
+
+<!-- Slide 27: hash_combine -->
+<section>
+    <h3>The Pro-Tip: <code>hash_combine</code></h3>
+    <pre style="font-size: 0.42em;"><code class="language-cpp" data-trim>
+template &lt;typename T&gt;
+void hash_combine(size_t&amp; seed, const T&amp; val) {
+    const size_t GOLDEN = 0x9e3779b9;
+    seed ^= std::hash&lt;T&gt;{}(val) + GOLDEN
+            + (seed &lt;&lt; 6) + (seed &gt;&gt; 2);
+}
+
+template &lt;typename... Args&gt;
+inline size_t hash_values(const Args&amp;... args) {
+    size_t seed = 0;
+    (hash_combine(seed, args), ...);  // C++17 fold expression
+    return seed;
+}
+    </code></pre>
+    <pre style="font-size: 0.42em;"><code class="language-cpp" data-trim>
+struct TransactionHash {
+    size_t operator()(const Transaction&amp; t) const {
+        return hash_values(
+            t.merchant_id, t.card_bin, t.amount_cents,
+            t.currency, t.timestamp_ms);
+    }
+};
+
+std::unordered_map&lt;Transaction, std::string, TransactionHash&gt; auth_cache;
+    </code></pre>
+    <p class="subtitle">src/05_pitfall1_hash_combine_txn.cpp</p>
+    <aside class="notes">
+        Boost-style hash_combine. 0x9e3779b9 is golden ratio. Ensures widely scattered outputs.  Knuths. shifts seed left and right, then combines. sSall changes large in final hash. Without XOR its commutative<hr/>
+        The variadic fold expression makes it composable for any number of fields.<hr/>
+        Functor showing usage -passed as 3rd param to unordered_map(type, value, typehash)<hr/>
+    </aside>
+</section>
+
+<!-- Slide 28: Pitfall 2 Intro -->
+<section>
+    <h2>Pitfall 2: The Collision Catastrophe</h2>
+    <p style="margin-top: 1em;">What happens when <strong>every</strong> key hashes to the same bucket?</p>
+</section>
+
+<!-- Slide 29: The Terrible Hash -->
+<section>
+    <h3>The Terrible Hash</h3>
+    <pre><code class="language-cpp" data-trim>
+struct TerribleAuthHash {
+    size_t operator()(const std::string&amp;) const {
+        return 42;  // Every auth code goes to bucket 42
+    }
+};
+    </code></pre>
+    <pre><code class="language-cpp" data-trim>
+using IntMap_t = std::map&lt;std::string, uint32_t&gt;;
+using GoodHash_t = std::unordered_map&lt;
+    std::string, uint32_t&gt;;
+using BadHash_t = std::unordered_map&lt;
+    std::string, uint32_t, TerribleAuthHash&gt;;
+IntMap_t ordered;
+GoodHash_t good_hash;
+BadHash_t bad_hash;
+    </code></pre>
+    <p class="subtitle">src/06_pitfall2_collision_catastrophe_txn.cpp</p>
+    <aside class="notes">
+        Contrived? Yes. But hash functions that accidentally cluster are more common than you think.
+    </aside>
+</section>
+
+<!-- Slide 30: Catastrophe Results -->
+<section>
+    <h3>Collision Catastrophe: Results</h3>
+    <table>
+        <thead>
+            <tr><th>Auths</th><th>std::map</th><th>unordered (good)</th><th style="color: #ff5555;">unordered (bad)</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>100</td><td>0.01 ms</td><td>0.00 ms</td><td style="color: #ff5555;">0.03 ms</td></tr>
+            <tr><td>500</td><td>0.04 ms</td><td>0.01 ms</td><td style="color: #ff5555;">0.62 ms</td></tr>
+            <tr><td>1,000</td><td>0.09 ms</td><td>0.02 ms</td><td style="color: #ff5555;">2.41 ms</td></tr>
+            <tr><td>2,000</td><td>0.21 ms</td><td>0.05 ms</td><td style="color: #ff5555;">9.84 ms</td></tr>
+            <tr><td>5,000</td><td>0.58 ms</td><td>0.12 ms</td><td style="color: #ff5555;">61.20 ms</td></tr>
+        </tbody>
+    </table>
+    <p class="subtitle">src/06_pitfall2_collision_catastrophe_txn.cpp</p>
+    <aside class="notes">
+        The fast container is now 100x slower than the slow one. O(n) linked-list traversal vs O(log n) tree traversal.
+    </aside>
+</section>
+
+<!-- Slide 31: The Shock -->
+<section>
+    <h3>With a bad hash:</h3>
+    <p style="margin-top: 0.5em;"><code>unordered_map</code> degrades to <span class="big-o">O(n)</span></p>
+    <p>which is <strong>worse</strong> than <code>map</code>'s <span class="big-o">O(log n)</span></p>
+    <h2 class="fragment" style="margin-top: 1em; color: #ff5555;">Your "fast" map is now 100x slower than the "slow" one.</h2>
+</section>
+
+<!-- Slide 32: Pitfall 3 Intro -->
+<section>
+    <h2>Pitfall 3: The Hidden Rehash</h2>
+    <p style="margin-top: 1em;">What happens when the table gets too full?</p>
+    <div class="danger fragment" style="margin-top: 1em;">
+        <strong>Stop-the-world:</strong> Every element is re-hashed and re-inserted.
+    </div>
+</section>
+
+<!-- Slide 33: Rehash Spikes -->
+<section>
+    <h3>Rehash Latency Spikes</h3>
+    <pre style="font-size: 0.5em;"><code data-trim data-noescape>
+150 TPS x 60 minutes = 540,000 authorizations
+
+Auth #       Time (us)       Buckets     Load Factor   Event
+     0            0.3              2          0.50      <span style="color: #ff5555;">** REHASH **</span>
+    97            3.5            197          0.50      <span style="color: #ff5555;">** REHASH **</span>
+   797           15.0           1597          0.50      <span style="color: #ff5555;">** REHASH **</span>
+    ...
+ 25717          382.5          51437          0.50      <span style="color: #ff5555;">** REHASH **</span>
+ 51437          788.1         102877          0.50      <span style="color: #ff5555;">** REHASH **</span>
+102877         1356.5         205759          0.50      <span style="color: #ff5555;">** REHASH **</span>
+205759         3087.2         411527          0.50      <span style="color: #ff5555;">** REHASH **</span>
+411527         <span style="color: #ff5555;">7781.9</span>         823117          0.50      <span style="color: #ff5555;">** REHASH **</span>
+    </code></pre>
+    <p class="subtitle">src/07_pitfall3_rehash_txn.cpp</p>
+    <aside class="notes">
+        Simulating 150 TPS over 60 minutes — 540K auths. Each rehash re-inserts every element. That 7782 us spike at 411K elements — nearly 8 milliseconds for a single insert in your auth pipeline.
+    </aside>
+</section>
+
+<!-- Slide 34: The Fix - reserve() -->
+<section>
+    <h3>The Fix: <code>reserve()</code></h3>
+    <table>
+        <thead>
+            <tr><th></th><th>Without reserve()</th><th style="color: #50fa7b;">With reserve()</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Avg insert time</td><td>0.10 us</td><td style="color: #50fa7b;">0.04 us</td></tr>
+            <tr><td>Max insert time</td><td style="color: #ff5555;">9259.04 us</td><td style="color: #50fa7b;">17.21 us</td></tr>
+            <tr><td>Rehash events</td><td style="color: #ff5555;">19</td><td style="color: #50fa7b;">0</td></tr>
+        </tbody>
+    </table>
+    <pre style="margin-top: 0.5em;"><code class="language-cpp" data-trim>
+std::unordered_map&lt;std::string, uint32_t&gt; auth_cache;
+// One line. Zero rehashes.
+auth_cache.reserve(expected_auth_count);  
+    </code></pre>
+    <p class="subtitle">src/08_pitfall3_reserve_fix_txn.cpp</p>
+    <aside class="notes">
+        One line of code. Max spike goes from 9259 us to 17 us. A 538x improvement in worst-case latency. You know your hourly TPS — call reserve().
+    </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 5: Beyond unordered_map (3 min) -->
+<!-- ============================================================ -->
+
+<!-- Slide 35: Section Title -->
+<section class="section-title">
+    <h2>Beyond <code>unordered_map</code></h2>
+    <h3>C++23 &amp; Modern Alternatives</h3>
+</section>
+
+<!-- Slide 36: flat_map -->
+<section>
+    <h3><code>std::flat_map</code> (C++23)</h3>
+    <pre><code class="language-cpp" data-trim>
+#include &lt;flat_map&gt;
+
+using BinTable_t = std::flat_map&lt;
+    std::string, BinInfo&gt;;
+BinTable_t bin_table;
+bin_table["411111"] = {"CHASE", "VISA"};
+auto it = bin_table.find("411111");
+    </code></pre>
+    <ul style="font-size: 0.8em;">
+        <li>Backed by two sorted <code>std::vector</code>s (contiguous memory)</li>
+        <li>Cache-friendly iteration &mdash; blazing fast for read-heavy workloads</li>
+        <li>Trade-off: O(n) insert, but BIN tables load <em>once</em> at startup</li>
+        <li>Think: <code>std::map</code> meets <code>std::vector</code></li>
+    </ul>
+    <p class="subtitle">src/09_cpp23_flat_map_txn.cpp</p>
+    <aside class="notes">
+        A sorted container backed by contiguous memory — it gives you std::map semantics with std::vector cache performance.<hr/>
+        Perfect for lookup tables loaded once and queried millions of times. BIN tables, country code maps, MCC code tables. Currently over 100 million BINs are available, but in practice only 300K to 1.2 million are actively in use.
+    </aside>
+</section>
+
+<!-- Slide 37: flat_map BIN Table Results -->
+<section>
+    <h3>BIN Table Iteration: 500K Entries</h3>
+    <table style="font-size: 0.85em;">
+        <thead>
+            <tr><th>Container</th><th>Iteration Time</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>std::flat_map</code></td>
+                <td style="color: #50fa7b;">2.75 ms</td>
+                <td style="font-size: 0.8em;">Contiguous memory, cache-friendly</td>
+            </tr>
+            <tr>
+                <td><code>std::map</code></td>
+                <td>5.96 ms</td>
+                <td style="font-size: 0.8em;">Node-based, pointer chasing</td>
+            </tr>
+            <tr>
+                <td><code>std::unordered_map</code></td>
+                <td style="color: #ff5555;">18.48 ms</td>
+                <td style="font-size: 0.8em;">Scattered buckets, worst iteration</td>
+            </tr>
+        </tbody>
+    </table>
+    <p style="margin-top: 0.8em; font-size: 0.75em;">Loaded once at startup, queried millions of times per day</p>
+    <p class="subtitle">src/09_cpp23_flat_map_txn.cpp</p>
+    <aside class="notes">
+        flat_map is over 2x faster than std::map and nearly 7x faster than unordered_map for iteration. For a BIN table that loads once and gets queried all day, this is a huge win.
+    </aside>
+</section>
+
+<!-- Slide 38: Heterogeneous Lookup Setup -->
+<section>
+    <h3>Heterogeneous Lookup (C++20)</h3>
+    <pre style="font-size: 0.45em;"><code class="language-cpp" data-trim>
+struct StringHash {
+    using is_transparent = void;  // Magic marker!
+
+    size_t operator()(std::string_view sv) const {
+        return std::hash&lt;std::string_view&gt;{}(sv);
+    }
+    size_t operator()(const std::string&amp; s) const {
+        return std::hash&lt;std::string&gt;{}(s);
+    }
+};
+
+struct StringEqual {
+    using is_transparent = void;
+
+    bool operator()(std::string_view a, std::string_view b) const {
+        return a == b;
+    }
+};
+    </code></pre>
+    <p class="subtitle">src/10_cpp20_heterogeneous_lookup_txn.cpp</p>
+    <aside class="notes">
+        Search for elements in unordered associative containers using different key type.<hr/> 
+        Both the hasher and equality must declare is_transparent.<hr/> 
+        StringEqual takes string_view on both sides so it can compare string vs string_view without conversion.<hr/>
+        ISO8583 defines credit/debit card transactions.  uses bitmap to define fields in use.  string_view incredibly efficient.
+    </aside>
+</section>
+
+<!-- Slide 39: Heterogeneous Lookup Usage -->
+<section>
+    <h3>Heterogeneous Lookup: Usage</h3>
+    <pre style="font-size: 0.5em;"><code class="language-cpp" data-trim>
+std::unordered_map&lt;std::string, MerchantInfo,
+                    StringHash, StringEqual&gt; cache;
+
+// Traditional: allocates temporary std::string every time
+auto it = cache.find(std::string(sv_from_iso_message));
+
+// Transparent: zero allocation!
+auto it = cache.find(sv_from_iso_message);  // Direct!
+    </code></pre>
+    <p class="subtitle">src/10_cpp20_heterogeneous_lookup_txn.cpp</p>
+    <aside class="notes">
+        StringHash and StringEqual 3rd and 4th params. find() accepts string_view directly — no temporary string allocated.<hr/> Every find() with a string_view used to allocate a temporary string. With transparent hashers, zero allocations.<hr/>
+        ISO 8583 msg has over 128 potential fields.  string_view and heterogeneous lookup ftw.
+    </aside>
+</section>
+
+<!-- Slide 40: Heterogeneous Lookup Results -->
+<section>
+    <h3>Zero-Alloc Lookups: 540K Merchant Resolutions</h3>
+    <table style="font-size: 0.85em;">
+        <thead>
+            <tr><th>Method</th><th>Time</th><th>Allocations</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Traditional <code>find(std::string(sv))</code></td>
+                <td style="color: #ff5555;">3.54 ms</td>
+                <td style="color: #ff5555;">540,000</td>
+            </tr>
+            <tr>
+                <td>Transparent <code>find(sv)</code></td>
+                <td style="color: #50fa7b;">2.57 ms</td>
+                <td style="color: #50fa7b;">0</td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="fix" style="font-size: 0.75em; margin-top: 0.8em;">
+        <strong>1.38x faster</strong> &mdash; and zero heap allocations per lookup
+    </div>
+    <p style="margin-top: 0.6em; font-size: 0.7em;">150 TPS &times; 60 min = 540,000 lookups/hour</p>
+    <p class="subtitle">src/10_cpp20_heterogeneous_lookup_txn.cpp</p>
+    <aside class="notes">
+        The speedup may look modest at 1.38x, but the real win is zero heap allocations. Every eliminated allocation reduces memory fragmentation and GC-like pressure. Over a full day at 150 TPS thats nearly 13 million avoided allocations.
+    </aside>
+</section>
+
+<!-- Slide 41: Iterator Stability -->
+<section>
+    <h3>Iterator Stability: When to Use <code>std::map</code></h3>
+    <pre style="font-size: 0.5em;"><code class="language-cpp" data-trim>
+using AuthCache_t = std::unordered_map&lt;
+    std::string, AuthRecord&gt;;
+AuthCache_t auth_cache;
+auth_cache["TXN_0001"] = {"AUTH_A1B2", 5000};
+
+AuthRecord* ptr = &amp;auth_cache["TXN_0001"];
+
+// New auths flood in, triggering rehash...
+for (int i = 3; i &lt; 20; ++i)
+    auth_cache["TXN_" + std::to_string(i)] = { /* ... */ };
+
+// pending_reversal is NOW DANGLING!
+    </code></pre>
+    <div class="danger" style="font-size: 0.7em;">
+        <code>unordered_map</code>: rehash invalidates <strong>ALL</strong> pointers/iterators
+    </div>
+    <div class="fix" style="font-size: 0.7em;">
+        <code>std::map</code>: insertion <strong>NEVER</strong> invalidates existing references
+    </div>
+    <p class="subtitle">src/11_iterator_stability_txn.cpp</p>
+    <aside class="notes">
+        If your system holds pointers to in-flight records across insertions, use std::map. Period.
+    </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 6: Conclusion (5 min) -->
+<!-- ============================================================ -->
+
+<!-- Slide 42: Section Title -->
+<section class="section-title">
+    <h2>The Decision Framework</h2>
+    <h3>Choosing the Right Container</h3>
+</section>
+
+<!-- Slide 43: Recap -->
+<section>
+    <h3>Three Rules</h3>
+    <p><code>std::vector</code> is your default sequence.</p>
+    <p><code>std::unordered_map</code> is your default associative container.</p>
+    <p style="margin-top: 0.5em;">It is <span class="big-o-good">O(1)</span> fast but <span class="big-o">O(n)</span> dangerous.</p>
+    <div style="margin-top: 1em; text-align: left; margin-left: 15%;">
+        <p class="fragment">1. <strong>Bad Hashes</strong> &rarr; use <code>hash_combine</code></p>
+        <p class="fragment">2. <strong>Collisions</strong> &rarr; hash <em>ALL</em> fields</p>
+        <p class="fragment">3. <strong>Rehashing</strong> &rarr; call <code>reserve()</code></p>
+    </div>
+</section>
+
+<!-- Slide 44: Decision Tree -->
+<section>
+    <h3>Your New Decision Tree</h3>
+    <div style="text-align: left; margin-left: 5%; font-family: monospace; font-size: 0.6em; line-height: 1.4;">
+        <p style="margin: 0.3em 0;">Need to store items?</p>
+        <p class="fragment" style="margin: 0.3em 0; color: #42affa;">├── Sequence? ──────────────────────── <span style="color: #50fa7b;">std::vector</span> (done)</p>
+        <p class="fragment" style="margin: 0.3em 0;">└── Key-Value?</p>
+        <p class="fragment" style="margin: 0.3em 0; margin-left: 1.5em;">├── Need sorted order? ──YES──── <span style="color: #50fa7b;">std::map</span></p>
+        <p class="fragment" style="margin: 0.3em 0; margin-left: 1.5em;">├── Need reference stability? ── <span style="color: #50fa7b;">std::map</span></p>
+        <p class="fragment" style="margin: 0.3em 0; margin-left: 1.5em;">└── Otherwise ──────────────────── <span style="color: #50fa7b;">std::unordered_map</span></p>
+        <p class="fragment" style="margin: 0.3em 0; margin-left: 3em;">├── Custom key? ──── Write a good hash (<span style="color: #42affa;">hash_combine</span>)</p>
+        <p class="fragment" style="margin: 0.3em 0; margin-left: 3em;">└── Know the size? ── Call <span style="color: #42affa;">reserve()</span></p>
+    </div>
+    <p class="subtitle">src/12_decision_framework_txn.cpp</p>
+    <aside class="notes">
+        Print this out. Pin it to your desk. This is the framework.
+    </aside>
+</section>
+
+<!-- Slide 45: Thank You -->
+<section>
+    <h3>Stop using <code>std::map</code> "just in case."</h3>
+    <p style="margin-top: 1em;">Start with <code>std::unordered_map</code>.</p>
+    <p>Understand its pitfalls.</p>
+    <p>Write faster, more modern C++.</p>
+    <h2 style="margin-top: 0.5em;">Thank You</h2>
+    <div style="display: flex; align-items: center; justify-content: center; gap: 2em; margin-top: 0.3em;">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 0.1em;">
+            <img src="Packt_Logo-01.png" style="max-height: 70px;" alt="Packt Logo" />
+            <span style="font-size: 0.45em; color: #ccc;">Coupon:</span>
+            <span style="font-size: 0.65em; color: #42affa; font-weight: bold;">CPPONLINE</span>
+        </div>
+        <img src="o-1-to-o-no-no-no-gh.png" style="max-width: 150px;" alt="GitHub QR Code" />
+    </div>
+    <aside class="notes">
+        Source code for all examples is in the GitHub repo. QR code links directly to it. Open for Q&amp;A.
+    </aside>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+<script>
+    // Inject custom styles into the speaker view popup window
+    const _windowOpen = window.open;
+    window.open = function() {
+        const win = _windowOpen.apply(this, arguments);
+        if (win) {
+            const inject = setInterval(() => {
+                try {
+                    if (win.document && win.document.head) {
+                        const s = win.document.createElement('style');
+                        s.textContent = '.speaker-controls-notes .value { font-size: 0.8em !important; }';
+                        win.document.head.appendChild(s);
+                        clearInterval(inject);
+                    }
+                } catch(e) { clearInterval(inject); }
+            }, 200);
+            setTimeout(() => clearInterval(inject), 5000);
+        }
+        return win;
+    };
+
+    Reveal.initialize({
+        hash: true,
+        slideNumber: 'c/t',
+        showSlideNumber: 'all',
+        transition: 'slide',
+        transitionSpeed: 'fast',
+        plugins: [RevealHighlight, RevealNotes]
+    });
+</script>
+</body>
+</html>
