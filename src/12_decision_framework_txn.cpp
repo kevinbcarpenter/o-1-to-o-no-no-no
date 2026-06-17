@@ -23,7 +23,7 @@ void print_recommendation(bool need_ordering, bool need_stability,
     }
 
     std::cout << "Use: std::unordered_map\n";
-    std::cout << "Reason: O(1) average-case is your best bet.\n";
+    std::cout << "Reason: O(1) average-case. That's the point.\n";
     std::cout << "Complexity: O(1) average lookup, insert, delete\n\n";
 
     std::cout << "Checklist:\n";
@@ -33,7 +33,7 @@ void print_recommendation(bool need_ordering, bool need_stability,
     }
     if (know_size) {
         std::cout << "  [!] Known size - call reserve(expected_size)!\n";
-        std::cout << "      This prevents costly rehashing.\n";
+        std::cout << "      This eliminates rehash spikes under load.\n";
     }
     if (!custom_key && !know_size) {
         std::cout << "  [OK] Standard key type with default hash.\n";

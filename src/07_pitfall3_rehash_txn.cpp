@@ -8,15 +8,12 @@
 #include <string>
 #include <vector>
 
-constexpr int TPS = 150;
-constexpr int TOTAL_AUTHORIZATIONS = TPS * 60 * 60;
-
 int main() {
     std::cout << "=== Rehash Latency Spikes in Auth Processing ===\n\n";
 
     std::unordered_map<std::string, uint32_t> auth_cache;
 
-    std::cout << "Simulating " << TPS << " TPS over 60 minutes (" << TOTAL_AUTHORIZATIONS << " authorizations)...\n\n";
+    std::cout << "Simulating 100,000 incoming authorizations...\n\n";
     std::cout << std::setw(12) << "Auth #"
               << std::setw(15) << "Time (us)"
               << std::setw(15) << "Buckets"
@@ -27,7 +24,7 @@ int main() {
     size_t prev_buckets = 0;
     std::vector<std::pair<int, double>> spikes;
 
-    for (int i = 0; i < TOTAL_AUTHORIZATIONS; ++i) {
+    for (int i = 0; i < 100'000; ++i) {
         std::string auth_code = "AUTH" + std::to_string(100000 + i);
 
         auto start = std::chrono::high_resolution_clock::now();

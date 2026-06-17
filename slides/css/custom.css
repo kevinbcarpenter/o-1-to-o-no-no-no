@@ -97,19 +97,47 @@
     color: #42affa;
 }
 
-/* Hide fragment table rows - keep layout space reserved */
+/* Hide fragment table rows without layout breaking */
 .reveal table tr.fragment:not(.visible) td {
-    visibility: hidden;
     border-color: transparent;
+    visibility: hidden;
+    height: 0;
+    padding: 0;
+    margin: 0;
 }
 
 /* Restore visibility when fragment becomes visible */
 .reveal table tr.fragment.visible td {
     visibility: visible;
+    height: auto;
     padding: 8px 16px;
     border-bottom: 1px solid #444;
 }
 
-.reveal .speaker-notes {
-    font-size: 9px;
+/* Compact agenda: 7 rows must fit one slide. Higher specificity than the
+   generic fragment.visible rule above so the tighter padding wins. */
+.reveal table.agenda td,
+.reveal table.agenda tr.fragment.visible td {
+    padding: 4px 14px;
+    white-space: nowrap;
+}
+
+/* ---- Speaker notes (practice mode: ?notes / ?practice) ----
+   Smaller, denser type than reveal's 18px default, and clear spacing so
+   bullets don't run together. Only affects the on-slide notes panel, not
+   the slides themselves. The separate popup speaker window (S key) is a
+   different document and is not reached by this stylesheet. */
+.reveal.show-notes .speaker-notes {
+    font-size: 13px;
+    line-height: 1.4;
+}
+.reveal.show-notes .speaker-notes p {
+    margin: 0 0 0.6em;
+}
+.reveal.show-notes .speaker-notes ul {
+    margin: 0.3em 0;
+    padding-left: 1.2em;
+}
+.reveal.show-notes .speaker-notes li {
+    margin-bottom: 0.45em;
 }

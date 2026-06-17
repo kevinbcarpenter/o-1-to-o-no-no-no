@@ -5,12 +5,13 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Output binaries to bin folder (separated by build type)
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/../bin/release")
-else()
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/../bin/debug")
-endif()
+# Put all built executables in <project-root>/bin (this CMakeLists lives in src/)
+get_filename_component(PROJECT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_ROOT}/bin")
+# Multi-config generators (Xcode, Visual Studio) otherwise add per-config subdirs
+foreach(cfg IN ITEMS DEBUG RELEASE RELWITHDEBINFO MINSIZEREL)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${cfg} "${PROJECT_ROOT}/bin")
+endforeach()
 
 # Optimization flags for benchmarks
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
@@ -28,3 +29,28 @@ add_executable(09_cpp23_flat_map_txn 09_cpp23_flat_map_txn.cpp)
 add_executable(10_cpp20_heterogeneous_lookup_txn 10_cpp20_heterogeneous_lookup_txn.cpp)
 add_executable(11_iterator_stability_txn 11_iterator_stability_txn.cpp)
 add_executable(12_decision_framework_txn 12_decision_framework_txn.cpp)
+
+# 90-minute expansion: open addressing, memory, profiling, security
+add_executable(13_open_addressing_compare 13_open_addressing_compare.cpp)
+add_executable(14_memory_overhead 14_memory_overhead.cpp)
+add_executable(15_cache_effects 15_cache_effects.cpp)
+add_executable(16_bucket_inspection 16_bucket_inspection.cpp)
+add_executable(17_hashdos_attack 17_hashdos_attack.cpp)
+add_executable(18_sharded_concurrent 18_sharded_concurrent.cpp)
+add_executable(19_perf_workload 19_perf_workload.cpp)
+add_executable(20_randomized_hashing 20_randomized_hashing.cpp)
+
+# Round 2: real-codebase-informed examples
+add_executable(21_locking_dominates 21_locking_dominates.cpp)
+add_executable(22_ordering_is_load_bearing 22_ordering_is_load_bearing.cpp)
+
+# Threads for the concurrency examples
+find_package(Threads REQUIRED)
+target_link_libraries(18_sharded_concurrent PRIVATE Threads::Threads)
+target_link_libraries(21_locking_dominates PRIVATE Threads::Threads)
+
+# Optional: real flat hash map for src/13 if Boost is available
+find_package(Boost QUIET)
+if(Boost_FOUND)
+    target_include_directories(13_open_addressing_compare PRIVATE ${Boost_INCLUDE_DIRS})
+endif()

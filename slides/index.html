@@ -19,10 +19,11 @@
 
 <!-- Slide 1: Title -->
 <section>
-    <img src="O-1-or-O-no-no-no-title-card.png" style="max-width: 98%; max-height: 98%; border: none; background: none; box-shadow: none;" alt="O(1) or O(no-no-no): Mastering the unordered_map" />
+    <img src="accu-on-sea-title-card.png" style="max-width: 98%; max-height: 98%; border: none; background: none; box-shadow: none;" alt="O(1) or O(no-no-no): Mastering the unordered_map — ACCU on Sea" />
     <aside class="notes">
         Welcome. All source code from this talk is available in the GitHub repo.
-        This talk is 50 minutes with 10 minutes for Q&amp;A.
+        This talk is ~80 minutes of content with time for Q&amp;A (90 total). The security
+        section is elastic — trim or expand it to stay on time.
     </aside>
 </section>
 
@@ -32,7 +33,13 @@
     <h2><code>std::vector</code> and <code>std::map</code></h2>
     <p class="fragment" style="font-size: 1.5em; margin-top: 1em; color: #ff5555;">That's wrong.</p>
     <aside class="notes">
-        Pause for effect. vector is king, but map is no longer its queen.
+        <p>Pause for effect. "vector is king, but map is no longer its queen."</p>
+        <p>Why "unordered" and not "hash"? Quick history:</p>
+        <ul>
+            <li><strong>SGI era (late 1990s):</strong> SGI's STL shipped a non-standard hash_map; vendors like MSVC and GCC carried it as an extension.</li>
+            <li><strong>TR1 (2005):</strong> introduced std::tr1::unordered_map — named "unordered", not "hash", to avoid clashing with those vendor hash_map extensions and to leave room for non-hash implementations.</li>
+            <li><strong>C++11 (2011):</strong> standardized as std::unordered_map.</li>
+        </ul>
     </aside>
 </section>
 
@@ -58,14 +65,24 @@
 
 <!-- Slide 5: Agenda -->
 <section>
-    <h2>Agenda</h2>
-    <table style="font-size: 0.7em;">
+    <h2 style="margin-bottom: 0.3em;">Agenda</h2>
+    <table class="agenda" style="font-size: 0.7em;">
         <tr class="fragment"><td class="highlight-blue">The Showdown</td><td><code>map</code> vs <code>unordered_map</code></td></tr>
         <tr class="fragment"><td class="highlight-blue">Under the Hood</td><td>How a hash table really works</td></tr>
-        <tr class="fragment"><td class="highlight-blue">Three Pitfalls</td><td>Hashing, Collisions, Rehashing</td></tr>
-        <tr class="fragment"><td class="highlight-blue">Beyond</td><td>C++23 <code>flat_map</code> &amp; heterogeneous lookup</td></tr>
+        <tr class="fragment"><td class="highlight-blue">Pitfalls[3]</td><td>Hashing, Collisions, Rehashing</td></tr>
+        <tr class="fragment"><td class="highlight-blue">HashDoS</td><td>When collisions become a CVE</td></tr>
+        <tr class="fragment"><td class="highlight-blue">Beyond</td><td><code>flat_map</code>, heterogeneous lookup, open addressing</td></tr>
+        <tr class="fragment"><td class="highlight-blue">Memory &amp; Profiling</td><td>Cache, allocators, perf, concurrency</td></tr>
         <tr class="fragment"><td class="highlight-blue">Decision Tree</td><td>Your new framework</td></tr>
     </table>
+    <aside class="notes">
+        <p>This started as a five-point agenda. For ACCU I added:</p>
+        <ul>
+            <li>HashDoS</li>
+            <li>Memory &amp; Profiling</li>
+            <li>Decision Tree</li>
+        </ul>
+    </aside>
 </section>
 
 <!-- ============================================================ -->
@@ -80,7 +97,7 @@
 
 <!-- Slide 7-8: Vertical stack (optional Red-Black Tree deep dive) -->
 <section>
-    <!-- Slide 7: Red-Black Tree Intro (vertical, optional) -->
+    <!-- Slide 7: std::map Pros/Cons (main slide) -->
     <section>
         <h2><code>std::map</code> &mdash; Red-Black Tree</h2>
         <ul>
@@ -89,71 +106,61 @@
             <li>Node-based: pointer-chasing, cache-unfriendly</li>
             <li>Stable iterators/references across all operations</li>
         </ul>
-        <p class="fragment" style="font-size: 0.55em; margin-top: 0.5em; color: #888;">Michael Sambol &mdash; <a href="https://youtu.be/qvZGUFHWChY" style="color: #42affa;">youtu.be/qvZGUFHWChY</a></p>
         <aside class="notes">
-            This is what we all learned. It works. It's predictable. But log(n) adds up at scale.
+            "This is what we all learned. It works. It's predictable. But log(n) adds up at scale."
         </aside>
     </section>
 
-    <!-- Slide 8: std::map Pros/Cons (main slide) -->
+    <!-- Slide 8: Red-Black Tree Intro (vertical, optional) -->
     <section>
         <h3>What is a Red-Black Tree?</h3>
-        <div style="display: flex; gap: 2em; align-items: flex-start; margin-top: 0.5em;">
-            <!-- Left side: Rules -->
-            <div style="text-align: left; font-size: 0.65em; flex: 1;">
-                <p style="margin-bottom: 0.3em;"><strong>Self-balancing rules:</strong></p>
-                <p class="fragment" data-fragment-index="0" style="margin: 0.2em 0;">✓ Each node: red or black</p>
-                <p class="fragment" data-fragment-index="1" style="margin: 0.2em 0;">✓ Root & leaves (nil): black</p>
-                <p class="fragment" data-fragment-index="2" style="margin: 0.2em 0;">✓ Red nodes → only black children</p>
-                <p class="fragment" data-fragment-index="3" style="margin: 0.2em 0;">✓ All paths: same black node count</p>
-                <p class="fragment" data-fragment-index="4" style="margin-top: 0.5em;"><strong>Result:</strong> <span class="big-o">O(log n)</span> guaranteed</p>
-            </div>
-
-            <!-- Right side: Tree diagram (SVG) -->
-            <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
-                <!-- Root -->
-                <div class="fragment" data-fragment-index="0" style="margin-bottom: 1em;">
-                    <span style="color: #000; background: #000; padding: 8px 14px; border-radius: 4px; font-size: 1.1em; font-weight: bold;">█</span>
-                </div>
-
-                <!-- Tree structure as SVG -->
-                <svg class="fragment" data-fragment-index="1" viewBox="0 0 320 180" style="width: 100%; max-width: 280px; height: auto;">
-                    <!-- Lines to red children -->
-                    <line x1="160" y1="0" x2="80" y2="45" stroke="#666" stroke-width="2"/>
-                    <line x1="160" y1="0" x2="240" y2="45" stroke="#666" stroke-width="2"/>
-
-                    <!-- Red children -->
-                    <circle cx="80" cy="55" r="14" fill="#ff5555"/>
-                    <circle cx="240" cy="55" r="14" fill="#ff5555"/>
-
-                    <!-- Lines to black leaves -->
-                    <line x1="80" y1="70" x2="40" y2="110" stroke="#666" stroke-width="2"/>
-                    <line x1="80" y1="70" x2="120" y2="110" stroke="#666" stroke-width="2"/>
-                    <line x1="240" y1="70" x2="200" y2="110" stroke="#666" stroke-width="2"/>
-                    <line x1="240" y1="70" x2="280" y2="110" stroke="#666" stroke-width="2"/>
-
-                    <!-- Black leaves -->
-                    <rect x="30" y="115" width="20" height="20" fill="#000"/>
-                    <rect x="110" y="115" width="20" height="20" fill="#000"/>
-                    <rect x="190" y="115" width="20" height="20" fill="#000"/>
-                    <rect x="270" y="115" width="20" height="20" fill="#000"/>
+        <div style="display: flex; gap: 1.5em; align-items: center; margin-top: 0.3em;">
+            <!-- Tree diagram: lines first, nodes drawn over them so there are no gaps -->
+            <div style="flex: 1.3;">
+                <svg viewBox="0 0 440 250" style="width: 100%; max-width: 480px; height: auto;">
+                    <g stroke="#8a8a8a" stroke-width="2.5">
+                        <line x1="220" y1="40" x2="120" y2="125"/>
+                        <line x1="220" y1="40" x2="320" y2="125"/>
+                        <line x1="120" y1="125" x2="60" y2="210"/>
+                        <line x1="120" y1="125" x2="180" y2="210"/>
+                        <line x1="320" y1="125" x2="260" y2="210"/>
+                        <line x1="320" y1="125" x2="380" y2="210"/>
+                    </g>
+                    <g font-size="19" font-weight="600" text-anchor="middle">
+                        <circle cx="220" cy="40" r="24" fill="#2c2c2c" stroke="#c8c8c8" stroke-width="2.5"/>
+                        <text x="220" y="47" fill="#fff">13</text>
+                        <circle cx="120" cy="125" r="24" fill="#ff5555" stroke="#ffb3b3" stroke-width="2.5"/>
+                        <text x="120" y="132" fill="#1a1a1a">8</text>
+                        <circle cx="320" cy="125" r="24" fill="#ff5555" stroke="#ffb3b3" stroke-width="2.5"/>
+                        <text x="320" y="132" fill="#1a1a1a">17</text>
+                        <circle cx="60"  cy="210" r="22" fill="#2c2c2c" stroke="#c8c8c8" stroke-width="2.5"/>
+                        <text x="60"  y="217" fill="#fff">1</text>
+                        <circle cx="180" cy="210" r="22" fill="#2c2c2c" stroke="#c8c8c8" stroke-width="2.5"/>
+                        <text x="180" y="217" fill="#fff">11</text>
+                        <circle cx="260" cy="210" r="22" fill="#2c2c2c" stroke="#c8c8c8" stroke-width="2.5"/>
+                        <text x="260" y="217" fill="#fff">15</text>
+                        <circle cx="380" cy="210" r="22" fill="#2c2c2c" stroke="#c8c8c8" stroke-width="2.5"/>
+                        <text x="380" y="217" fill="#fff">25</text>
+                    </g>
                 </svg>
-
-                <!-- Nil nodes indicator -->
-                <div class="fragment" data-fragment-index="2" style="margin-top: 0.8em; font-size: 0.7em; color: #888;">
-                    (nil children below each black node)
+                <div style="display:flex; gap:1.2em; justify-content:center; font-size:0.5em; color:#aaa; margin-top:0.2em;">
+                    <span><span style="display:inline-block;width:0.8em;height:0.8em;border-radius:50%;background:#ff5555;vertical-align:middle;margin-right:0.3em;"></span>red</span>
+                    <span><span style="display:inline-block;width:0.8em;height:0.8em;border-radius:50%;background:#2c2c2c;border:1.5px solid #c8c8c8;vertical-align:middle;margin-right:0.3em;"></span>black</span>
+                    <span style="color:#777;">nil sentinels not shown</span>
                 </div>
-
-                <!-- Final rule -->
-                <div class="fragment" data-fragment-index="3" style="margin-top: 0.5em; font-size: 0.75em; color: #42affa; font-weight: bold;">
-                    → Root (black) + Red child + Black leaf + Nil (black) = 3 black nodes per path ✓
-                </div>
+            </div>
+            <!-- Concise takeaways -->
+            <div style="flex: 1; text-align: left; font-size: 0.72em; line-height: 1.5;">
+                <p class="fragment" style="margin: 0 0 0.6em;">Self-balancing &rarr; height stays &asymp; <span class="big-o-good">log n</span></p>
+                <p class="fragment" style="margin: 0 0 0.6em;">&rArr; guaranteed <span class="big-o-good">O(log n)</span> lookup / insert / erase</p>
+                <p class="fragment" style="margin: 0 0 0.6em;">Every node is a separate <strong>heap allocation</strong></p>
+                <p class="fragment subtitle" style="margin-top: 0.8em;">Coloring keeps the longest path &le; 2&times; the shortest &mdash; that's the balance.</p>
             </div>
         </div>
         <aside class="notes">
-            These simple rules prevent the tree from becoming a long chain. As elements are added or removed, the tree rotates to maintain balance.
+            "A red-black tree is just a balanced binary search tree. The colouring is the bookkeeping that keeps it balanced: any root-to-leaf path is at most twice the shortest, so height stays around log n and lookups are guaranteed O(log n). That's the upside — predictable and ordered.
 
-Data storage: Actual data lives in the colored nodes (root, red, black). Nil nodes aren't stored in memory—they're a theoretical concept. In code, we use NULL pointers to represent no child here. The nil nodes help us understand why the balancing rules ensure O(log n) performance.
+The catch is the last bullet, and it's the thread for the rest of the talk: every node is its own heap allocation, so walking the tree is pointer-chasing across scattered memory — a cache miss per hop. Hold that thought: it's exactly why the hash table beats it here, and why the FLAT maps in the open-addressing section win even bigger. (nil sentinels are conceptual null children — not stored; that's why I don't draw them as real nodes.)"
         </aside>
     </section>
 </section>
@@ -168,7 +175,7 @@ Data storage: Actual data lives in the colored nodes (root, red, black). Nil nod
         <li><em>"Average"</em> is doing heavy lifting in that sentence</li>
     </ul>
     <aside class="notes">
-        Emphasis on average-case — this is foreshadowing for the pitfalls section.
+        Emphasis on "average-case" — this is foreshadowing for the pitfalls section.
     </aside>
 </section>
 
@@ -199,8 +206,7 @@ auto map_time = high_resolution_clock::now() - start;
     </code></pre>
     <p class="subtitle">src/02_benchmark_simple_txn.cpp</p>
     <aside class="notes">
-        Simple as possible. Insert N transaction IDs, look up N. Real auth codes, real pattern.<hr/>
-        Not shown is the unordered run but structure of test is the same.
+        "Simple as possible. Insert N transaction IDs, look up N. Real auth codes, real pattern."
     </aside>
 </section>
 
@@ -221,30 +227,63 @@ auto map_time = high_resolution_clock::now() - start;
     </table>
     <p class="subtitle">src/01_benchmark_map_vs_unordered_txn.cpp</p>
     <aside class="notes">
-        Map time climbs with N. unordered_map stays flat. This is the O(1) promise in action.
+        "Map time climbs with N. unordered_map stays flat. This is the O(1) promise in action."
     </aside>
 </section>
 
 <!-- Slide 12: The Graph Concept -->
 <section>
     <h3>Lookup Time vs Container Size</h3>
-    <div style="text-align: center; font-size: 0.8em;">
-        <pre style="background: none; box-shadow: none; text-align: left; display: inline-block;">
-Time (ns)
-  200 │                                    ╭── std::map O(log n)
-      │                              ╭─────╯
-  150 │                        ╭─────╯
-      │                  ╭─────╯
-  100 │            ╭─────╯
-      │      ╭─────╯
-   50 │╭─────╯
-      │───────────────────────────────────── std::unordered_map O(1)
-    0 └──────────────────────────────────────
-      1K    10K    100K    1M     10M
-                    Container Size</pre>
+    <div style="display:flex; justify-content:center; margin-top:0.3em;">
+        <svg viewBox="0 0 760 400" xmlns="http://www.w3.org/2000/svg" style="width:100%; max-width:760px; height:auto;">
+            <!-- gridlines -->
+            <g stroke="#333" stroke-width="1">
+                <line x1="70" y1="261" x2="730" y2="261"/>
+                <line x1="70" y1="192" x2="730" y2="192"/>
+                <line x1="70" y1="123" x2="730" y2="123"/>
+                <line x1="70" y1="54"  x2="730" y2="54"/>
+            </g>
+            <!-- axes -->
+            <g stroke="#888" stroke-width="2">
+                <line x1="70" y1="40" x2="70" y2="330"/>
+                <line x1="70" y1="330" x2="730" y2="330"/>
+            </g>
+            <!-- y labels -->
+            <g fill="#aaa" font-size="14" text-anchor="end" font-family="sans-serif">
+                <text x="60" y="335">0</text>
+                <text x="60" y="266">50</text>
+                <text x="60" y="197">100</text>
+                <text x="60" y="128">150</text>
+                <text x="60" y="59">200</text>
+            </g>
+            <!-- x labels -->
+            <g fill="#aaa" font-size="14" text-anchor="middle" font-family="sans-serif">
+                <text x="70" y="352">1K</text>
+                <text x="235" y="352">10K</text>
+                <text x="400" y="352">100K</text>
+                <text x="565" y="352">1M</text>
+                <text x="730" y="352">10M</text>
+            </g>
+            <!-- axis titles -->
+            <text x="400" y="382" fill="#ccc" font-size="15" text-anchor="middle" font-family="sans-serif">Container size &rarr;</text>
+            <text x="20" y="185" fill="#ccc" font-size="15" text-anchor="middle" font-family="sans-serif" transform="rotate(-90 20 185)">Lookup time (ns)</text>
+            <!-- std::map O(log n) -->
+            <polyline fill="none" stroke="#ff5555" stroke-width="3" points="70,261 235,222 400,175 565,113 730,50"/>
+            <g fill="#ff5555"><circle cx="70" cy="261" r="4"/><circle cx="235" cy="222" r="4"/><circle cx="400" cy="175" r="4"/><circle cx="565" cy="113" r="4"/><circle cx="730" cy="50" r="4"/></g>
+            <!-- std::unordered_map O(1) -->
+            <polyline fill="none" stroke="#50fa7b" stroke-width="3" points="70,305 235,304 400,302 565,300 730,298"/>
+            <g fill="#50fa7b"><circle cx="70" cy="305" r="4"/><circle cx="235" cy="304" r="4"/><circle cx="400" cy="302" r="4"/><circle cx="565" cy="300" r="4"/><circle cx="730" cy="298" r="4"/></g>
+            <!-- ~9x gap at 10M -->
+            <line x1="708" y1="54" x2="708" y2="294" stroke="#ff5555" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <text x="700" y="178" fill="#ff5555" font-size="16" text-anchor="end" font-family="sans-serif" font-weight="bold">~9&times;</text>
+            <!-- curve labels -->
+            <text x="415" y="92" fill="#ff5555" font-size="15" font-family="monospace" font-weight="bold">std::map &nbsp;O(log n)</text>
+            <text x="80" y="288" fill="#50fa7b" font-size="15" font-family="monospace" font-weight="bold">std::unordered_map &nbsp;O(1)</text>
+        </svg>
     </div>
+    <p class="subtitle">measured lookup latency &middot; src/01_benchmark_map_vs_unordered_txn.cpp</p>
     <aside class="notes">
-        At 10 million auth records, map is nearly 9x slower. In acquirer processing where every millisecond counts at 10K TPS, this is the entire performance budget.
+        "At 10 million auth records, map is nearly 9x slower. In acquirer processing where every nanosecond counts at 10K TPS, this is the entire performance budget."
     </aside>
 </section>
 
@@ -252,9 +291,23 @@ Time (ns)
 <section>
     <h2>At 10 million items, <code>map</code> lookup is</h2>
     <h1 style="color: #ff5555;">~9x slower</h1>
-    <p style="margin-top: 1em;">At 10,000 TPS, milliseconds become seconds become SLA breaches.</p>
+    <p style="margin-top: 1em;">At 10,000 TPS, nanoseconds become milliseconds become SLA breaches.</p>
     <aside class="notes">
-        So why doesn't everyone just use unordered_map? Because of what comes next.
+        "So why doesn't everyone just use unordered_map? Because of what comes next."
+    </aside>
+</section>
+
+<!-- Slide 13b: Honest caveat — O(1) in N, not in key length -->
+<section>
+    <h3>One honest caveat</h3>
+    <p><span class="big-o-good">O(1)</span> is in the <strong>number of elements</strong> &mdash; not free.</p>
+    <div style="margin-top: 1em; text-align: left; margin-left: 10%; font-size: 0.85em;">
+        <p class="fragment"><code>unordered_map</code>: every lookup <strong>hashes + compares the whole key</strong> &rarr; <span class="big-o">O(k)</span> in key length <em>k</em></p>
+        <p class="fragment"><code>map</code>: <span class="big-o">O(k &middot; log n)</span> &mdash; the comparisons add up too</p>
+        <p class="fragment" style="margin-top: 0.6em;">For long string keys, hashing cost is real. The win is in <em>n</em>, not in <em>k</em>.</p>
+    </div>
+    <aside class="notes">
+        "I want to be honest before someone in row three is. The flat line is flat in N. But every lookup still pays to hash the full string — that's O(k) in key length. map pays O(k) per comparison times log n comparisons. So unordered_map wins as N grows, but neither is free on long keys. Keep your keys short."
     </aside>
 </section>
 
@@ -277,7 +330,7 @@ Time (ns)
         <p class="fragment"><strong>Step 3:</strong> Bucket &rarr; Linear scan &rarr; Data</p>
     </div>
     <aside class="notes">
-        Three steps. Key goes in, hash comes out, modulo gives us a bucket, we scan the bucket for our key.
+        "Three steps. Key goes in, hash comes out, modulo gives us a bucket, we scan the bucket for our key."
     </aside>
 </section>
 
@@ -285,7 +338,6 @@ Time (ns)
 <section>
     <h3>Step 1: Key &rarr; Hash</h3>
     <pre><code class="language-cpp" data-trim>
-std::string mid = "MID_100001";  // Merchant ID
 size_t hash = std::hash&lt;std::string&gt;{}(mid);
 size_t bucket = hash % merchant_cache.bucket_count();
     </code></pre>
@@ -295,39 +347,18 @@ size_t bucket = hash % merchant_cache.bucket_count();
     </div>
     <p class="subtitle">src/03_under_the_hood_txn.cpp</p>
     <aside class="notes">
-        std::hash turns your key into a big number. Modulo maps it to a bucket.
+        "std::hash turns your key into a big number. Modulo maps it to a bucket."
     </aside>
 </section>
 
-<!-- Slide 17: The Merchant Data -->
-<section>
-    <h3>What is a MID?</h3>
-    <pre><code class="language-cpp" data-trim>
-std::vector&lt;std::pair&lt;std::string, std::string&gt;&gt; merchants = {
-    {"MID_100001", "AMAZON WEB SERVICES"},
-    {"MID_200045", "WALMART STORE 3291"},
-    {"MID_300078", "SHELL GAS STATION"},
-    {"MID_400012", "STARBUCKS CORP"},
-    {"MID_500099", "UNITED AIRLINES"},
-    {"MID_600023", "TARGET STORE 1482"}
-};
-    </code></pre>
-    <p style="margin-top: 1.5em;"><strong>MID</strong> = Merchant ID</p>
-    <p>A unique identifier for each merchant (business) in the acquirer's network.</p>
-    <p class="subtitle">src/03_under_the_hood_txn.cpp lines 34-44</p>
-    <aside class="notes">
-        In payment processing, a MID uniquely identifies a merchant. When a transaction arrives, we look up its MID in this cache to find merchant details. This is the perfect use case for unordered_map—fast lookups on a constantly changing set of merchants.
-    </aside>
-</section>
-
-<!-- Slide 18: Step 2 - Bucket Array -->
+<!-- Slide 17: Step 2 - Bucket Array -->
 <section>
     <h3>Step 2: The Bucket Array</h3>
     <pre><code class="language-cpp" data-trim>
-std::cout &lt;&lt; "Size: " &lt;&lt; u_map.size();
-std::cout &lt;&lt; "Bucket count: " &lt;&lt; u_map.bucket_count();
-std::cout &lt;&lt; "Load factor: " &lt;&lt; u_map.load_factor();
-std::cout &lt;&lt; "Max load factor: " &lt;&lt; u_map.max_load_factor();
+std::cout &lt;&lt; "Size: " &lt;&lt; map.size();
+std::cout &lt;&lt; "Bucket count: " &lt;&lt; map.bucket_count();
+std::cout &lt;&lt; "Load factor: " &lt;&lt; map.load_factor();
+std::cout &lt;&lt; "Max load factor: " &lt;&lt; map.max_load_factor();
     </code></pre>
     <pre style="background: #1a1a2e; font-size: 0.5em; margin-top: 0.5em;"><code data-trim data-noescape>
 Bucket 0: []
@@ -339,11 +370,11 @@ Bucket 5: [<span style="color: #50fa7b;">"MID_200045"</span>]
     </code></pre>
     <p class="subtitle">src/03_under_the_hood_txn.cpp</p>
     <aside class="notes">
-        Each bucket is a slot in the array. Notice bucket 3 has two items chained together — that's a collision. Different MIDS but same modulo.  Unlimited possible keys - pigeonhole principle, multiple keys eventually hash to same bucket.  Separate chaining essential.
+        "Each bucket is a slot in the array. Notice bucket 3 has two items chained together — that's a collision."
     </aside>
 </section>
 
-<!-- Slide 19: Separate Chaining -->
+<!-- Slide 18: Separate Chaining -->
 <section>
     <h3>Separate Chaining</h3>
     <div style="margin-top: 1.5em; text-align: left; margin-left: 5%; font-family: monospace; font-size: 0.85em; line-height: 1.6;">
@@ -357,20 +388,22 @@ Bucket 5: [<span style="color: #50fa7b;">"MID_200045"</span>]
     <p style="margin-top: 1.5em;">Each bucket is the head of a <strong>linked list</strong>.</p>
     <p class="fragment">When two keys hash to the same bucket, they get <strong>chained</strong>.</p>
     <aside class="notes">
-        When keys collide, they chain together in a linked list at that bucket. This sets up slide 19's critical insight: performance depends entirely on whether collisions are scattered across buckets or concentrated in one. The rest of the presentation explores what causes buckets to overflow with collisions.
+        "This isn't an accident. The standard's bucket API + reference stability across rehash
+        force each element into its own heap node. That IS separate chaining — and it's why
+        the faster maps we'll see later had to ship as separate libraries: they break this guarantee."
     </aside>
 </section>
 
-<!-- Slide 20: The Key Insight -->
+<!-- Slide 19: The Key Insight -->
 <section>
     <h2><span class="big-o-good">O(1)</span> assumes each bucket has ~1 item.</h2>
     <h2 class="fragment" style="margin-top: 1em;"><span class="big-o">O(n)</span> happens when one bucket has <em>ALL</em> items.</h2>
     <aside class="notes">
-        This is the entire talk in two sentences. Everything that follows is about what makes buckets overflow.
+        "This is the entire talk in two sentences. Everything that follows is about what makes buckets overflow."
     </aside>
 </section>
 
-<!-- Slide 21: Load Factor -->
+<!-- Slide 20: Load Factor -->
 <section>
     <h3>Load Factor</h3>
     <pre style="background: none; box-shadow: none; font-size: 0.7em;"><code data-trim data-noescape>
@@ -379,45 +412,95 @@ load_factor = size() / bucket_count()
     <div style="margin-top: 1em;">
         <p>When <code>load_factor &gt; max_load_factor</code> (default: <strong>1.0</strong>)</p>
         <div class="danger fragment" style="margin-top: 0.5em;">
-            <strong>REHASH:</strong> Allocate new bucket array → re-hash every element → re-insert all
+            <strong>REHASH:</strong> Allocate new bucket array → re-hash every key → re-link all nodes
         </div>
     </div>
     <aside class="notes">
-        The standard tries to keep buckets short by rehashing when the table gets too full. But rehashing itself has costs.
+        • Rehash = stop-the-world: new bucket array, re-hash + re-link every node
+        • max_load_factor tunes collision vs memory — lower = faster/fatter, higher = slower/leaner
+        • Almost everyone uses it wrong: they want reserve(), not load factor tuning
+        • Matt Kulukundis (CppCon 2017) audited every load-factor user at Google — all wrong; SwissTable made set_max_load_factor a no-op
+        • Practical advice: call reserve() if you know the size, leave max_load_factor at 1.0, profile before touching it
     </aside>
 </section>
 
 <!-- ============================================================ -->
-<!-- SECTION 4: Three Pitfalls (15 min) -->
+<!-- SECTION 4: Pitfalls -->
 <!-- ============================================================ -->
 
-<!-- Slide 22: Section Title -->
+<!-- Slide 21: Section Title -->
 <section class="section-title">
     <h2>When <span class="big-o-good">O(1)</span> Becomes <span class="big-o">O(n)</span></h2>
-    <div style="position: relative; display: inline-block;">
-        <img src="pitfalls-illustration.webp" style="margin-top: 1em; max-width: 100%; max-height: 280px;" alt="Pitfalls illustration" />
-        <div class="fragment fade-in-then-out" data-fragment-index="0" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.9); border-radius: 8px; border: 2px solid #ff5555;">
-            <span style="font-size: 1.8em; font-family: 'Courier New', monospace; font-weight: bold; color: #ff5555;">O(NO-NO-NO)</span>
-        </div>
-    </div>
-    <div style="margin-top: 0.8em; font-size: 0.8em; text-align: center;">
-        <p class="fragment" data-fragment-index="1">Pitfall 1: The Bad Hash</p>
-        <p class="fragment" data-fragment-index="2">Pitfall 2: The Collision Catastrophe</p>
-        <p class="fragment" data-fragment-index="3">Pitfall 3: The Hidden Rehash</p>
+    <img src="pitfalls-illustration.webp" style="margin-top: 0.5em; max-width: 100%; max-height: 220px;" alt="Pitfalls illustration" />
+    <div style="margin-top: 0.5em; font-size: 0.75em; text-align: center; line-height: 1.6;">
+        <p class="fragment" style="margin: 0;">Pitfall 0: The Ordering Trap <span style="color:#ff5555;">(correctness)</span></p>
+        <p class="fragment" style="margin: 0;">Pitfall 1: The Bad Hash</p>
+        <p class="fragment" style="margin: 0;">Pitfall 2: The Collision Catastrophe</p>
+        <p class="fragment" style="margin: 0;">Pitfall 3: The Hidden Rehash</p>
     </div>
     <aside class="notes">
-        Or what I call: O (no-no-no)
+        "Or what I call: O (no-no-no). Four pitfalls — the first one is a correctness trap, the rest are performance."
     </aside>
 </section>
 
-<!-- Slide 23: Pitfall 1 Intro -->
+<!-- Pitfall 0: the correctness pitfall (~3 min) -->
+
+<!-- Pitfall 0 Intro -->
+<section>
+    <h2>Pitfall 0: It's in the name</h2>
+    <p style="margin-top: 1em;">The next three pitfalls cost you <em>performance</em>.</p>
+    <p class="fragment" style="font-size: 1.2em;">This one costs you <strong style="color:#ff5555;">correctness</strong> &mdash; and it bites first.</p>
+    <aside class="notes">
+        "Before we talk about speed, the scariest swap bug has nothing to do with speed. unordered_map is unordered. If any code relied on the order, swapping it silently changes behavior — and it compiles, and it passes a quick test."
+    </aside>
+</section>
+
+<!-- The real-world setup -->
+<section>
+    <h3>A real auth service</h3>
+    <p style="text-align:left; margin: 0.5em 5%; font-size: 0.9em;">A per-request <code>std::map</code> is iterated <strong>in order</strong> to build the wire message&hellip;</p>
+    <pre style="font-size: 0.4em;"><code class="language-cpp" data-trim>
+std::string requestMapToMML( std::map&lt;std::string,std::string&gt;&amp; req ) {
+    std::string mml;
+    for ( const auto&amp; field : req ) {        // sorted iteration
+        mml.append( toMmlTag(field.first) );
+        mml.append( field.second );
+        mml += MML_FIELD_SEP;
+    }
+    mml += Crypto::SHA1( mml );               // order is now in the hash
+    return mml;
+}</code></pre>
+    <p class="fragment" style="color:#ff5555; font-size:0.85em;">Swap to <code>unordered_map</code> &rarr; fields reorder &rarr; bytes change &rarr; SHA1 changes &rarr; the switch rejects the message.</p>
+    <p class="subtitle">distilled from a real payment-auth service &middot; src/22_ordering_is_load_bearing.cpp</p>
+    <aside class="notes">
+        "This is real, lightly distilled. The map's iteration order WAS the wire format, and it's baked into a SHA1. One container swap and every message fails integrity at the far end."
+    </aside>
+</section>
+
+<!-- The demo result -->
+<section>
+    <h3>Same data, one swap</h3>
+    <pre style="font-size: 0.42em; background:#1a1a2e;"><code data-trim data-noescape>
+std::map           AMOUNT5000|AUTH_GUIDA1B2|BATCH_ID42|CARD_BIN411111|...
+                   hash = 6012151533857893158   <span style="color:#50fa7b;">ACCEPTED</span>
+
+std::unordered_map BATCH_ID42|TRACEZZ9|TERM_IDTERM07|CURRENCYUSD|...
+                   hash = 6411950521819669982   <span style="color:#ff5555;">REJECTED — wire protocol broken</span></code></pre>
+    <p class="fragment">No bad hash. No collision. No rehash. A pure <strong>correctness</strong> bug.</p>
+    <p class="fragment subtitle">Hides anywhere iteration order is load-bearing: wire formats, signatures/HMACs, golden-file tests, dedup keys.</p>
+    <aside class="notes">
+        "And a single fixed-payload unit test passes, because that one payload round-trips. You only find it under real traffic. Rule: if you ever iterate a map for output, the order is part of your contract — don't swap it casually."
+    </aside>
+</section>
+
+<!-- Slide 22: Pitfall 1 Intro -->
 <section>
     <h2>Pitfall 1: The Bad Hash</h2>
     <p style="margin-top: 1em;">You need to hash a custom struct.</p>
     <p class="fragment" style="font-size: 1.3em;">What could go wrong?</p>
 </section>
 
-<!-- Slide 24: Transaction Struct -->
+<!-- Slide 23: Transaction Struct -->
 <section>
     <h3>The Transaction Struct</h3>
     <pre><code class="language-cpp" data-trim>
@@ -437,19 +520,18 @@ struct Transaction {
     </code></pre>
     <p class="subtitle">src/04_pitfall1_bad_hash_txn.cpp</p>
     <aside class="notes">
-        Four fields. We need to hash this to use it as a key in our unordered_map.<hr/>
-        == equality operator -> used more then one per bucket.
+        "Four fields. We need to hash this to use it as a key in our unordered_map."
     </aside>
 </section>
 
-<!-- Slide 25: Bad vs Good Hash -->
+<!-- Slide 24: Bad vs Good Hash -->
 <section>
     <h3>Bad Hash vs Good Hash</h3>
     <div class="columns" style="gap: 10px;">
         <div class="col">
             <div class="danger" style="padding: 8px 12px;">
                 <strong style="color: #ff5555;">BAD</strong>
-                <pre style="font-size: 0.4em; margin: 0.5em 0; box-shadow: none;"><code class="language-cpp" data-trim>
+                <pre style="font-size: 0.34em; margin: 0.5em 0; box-shadow: none;"><code class="language-cpp" data-trim>
 struct BadHash {
   size_t operator()(
     const Transaction&amp; t) const {
@@ -470,11 +552,11 @@ struct GoodHash {
   size_t operator()(
     const Transaction&amp; t) const {
     size_t seed = 0;
-    // Combine ALL fields:
-    seed ^= hash(t.merchant_id);
-    seed ^= hash(t.card_bin);
-    seed ^= hash(t.amount_cents);
-    seed ^= hash(t.currency);
+    // Order-dependent mixing:
+    mix(seed, t.merchant_id);
+    mix(seed, t.card_bin);
+    mix(seed, t.amount_cents);
+    mix(seed, t.currency);
     return seed;
   }
 };
@@ -482,36 +564,20 @@ struct GoodHash {
             </div>
         </div>
     </div>
+    <p style="font-size: 0.6em; color: #ff5555; margin-top: 0.3em;">
+        Why not plain <code>seed ^= hash(field)</code>? XOR is commutative &mdash;
+        swap merchant/BIN and you get the <em>same</em> hash. <code>mix()</code> is on the next slide.
+    </p>
     <p class="subtitle">src/04_pitfall1_bad_hash_txn.cpp</p>
     <aside class="notes">
-        Left: only hashes currency. 99% USD means 99% collision. Right: combines all fields with the golden ratio constant.<hr/>
-        No one would hash on a single currency field, but mistakes happen more often then you think.
+        "Left: only hashes currency. 99% USD means 99% collision. Right: combine ALL fields — but HOW you combine matters. Plain XOR is commutative and self-cancelling: hash(A,B) == hash(B,A), and two equal fields XOR to zero. That's why we use an order-dependent mix() — shown next as hash_combine. The source file uses exactly that."
     </aside>
 </section>
 
-<!-- Slide 26: Things to Think About -->
-<section>
-    <h3>Things to Think About</h3>
-    <div style="display: flex; gap: 1em; margin-top: 1em; font-size: 0.75em;">
-        <div class="fragment" style="flex: 1; background: rgba(66, 175, 250, 0.1); border-top: 3px solid #42affa; padding: 0.8em; border-radius: 4px;">
-            <p style="margin: 0 0 0.4em;"><strong style="color: #42affa;">Cost</strong></p>
-            <p style="margin: 0;">More fields = more computation per lookup. If one field is already unique, hashing the rest is wasted work.</p>
-        </div>
-        <div class="fragment" style="flex: 1; background: rgba(80, 250, 123, 0.1); border-top: 3px solid #50fa7b; padding: 0.8em; border-radius: 4px;">
-            <p style="margin: 0 0 0.4em;"><strong style="color: #50fa7b;">Semantics</strong></p>
-            <p style="margin: 0;">Your hash must match <code>operator==</code>. Only hash the fields that define identity.</p>
-        </div>
-        <div class="fragment" style="flex: 1; background: rgba(255, 85, 85, 0.1); border-top: 3px solid #ff5555; padding: 0.8em; border-radius: 4px;">
-            <p style="margin: 0 0 0.4em;"><strong style="color: #ff5555;">Mutability</strong></p>
-            <p style="margin: 0;">Never hash a field that can change after insertion &mdash; <code>find()</code> will look in the wrong bucket.</p>
-        </div>
-    </div>
-</section>
-
-<!-- Slide 27: hash_combine -->
+<!-- Slide 25: hash_combine -->
 <section>
     <h3>The Pro-Tip: <code>hash_combine</code></h3>
-    <pre style="font-size: 0.42em;"><code class="language-cpp" data-trim>
+    <pre style="font-size: 0.45em;"><code class="language-cpp" data-trim>
 template &lt;typename T&gt;
 void hash_combine(size_t&amp; seed, const T&amp; val) {
     const size_t GOLDEN = 0x9e3779b9;
@@ -526,7 +592,7 @@ inline size_t hash_values(const Args&amp;... args) {
     return seed;
 }
     </code></pre>
-    <pre style="font-size: 0.42em;"><code class="language-cpp" data-trim>
+    <pre style="font-size: 0.45em;"><code class="language-cpp" data-trim>
 struct TransactionHash {
     size_t operator()(const Transaction&amp; t) const {
         return hash_values(
@@ -534,30 +600,27 @@ struct TransactionHash {
             t.currency, t.timestamp_ms);
     }
 };
-
-std::unordered_map&lt;Transaction, std::string, TransactionHash&gt; auth_cache;
     </code></pre>
     <p class="subtitle">src/05_pitfall1_hash_combine_txn.cpp</p>
     <aside class="notes">
-        Boost-style hash_combine. 0x9e3779b9 is golden ratio. Ensures widely scattered outputs.  Knuths. shifts seed left and right, then combines. sSall changes large in final hash. Without XOR its commutative<hr/>
-        The variadic fold expression makes it composable for any number of fields.<hr/>
-        Functor showing usage -passed as 3rd param to unordered_map(type, value, typehash)<hr/>
+        "Boost-style hash_combine. The 0x9e3779b9 is the golden ratio. The variadic fold expression makes it composable for any number of fields."
     </aside>
 </section>
 
-<!-- Slide 28: Pitfall 2 Intro -->
+<!-- Slide 26: Pitfall 2 Intro -->
 <section>
     <h2>Pitfall 2: The Collision Catastrophe</h2>
-    <p style="margin-top: 1em;">What happens when <strong>every</strong> key hashes to the same bucket?</p>
+    <p style="margin-top: 1em;">What happens when <strong>thousands</strong> of keys land in the <strong>same few</strong> buckets?</p>
 </section>
 
-<!-- Slide 29: The Terrible Hash -->
+<!-- Slide 27: The Terrible Hash -->
 <section>
-    <h3>The Terrible Hash</h3>
+    <h3>The Card-Type Hash</h3>
     <pre><code class="language-cpp" data-trim>
-struct TerribleAuthHash {
-    size_t operator()(const std::string&amp;) const {
-        return 42;  // Every auth code goes to bucket 42
+struct CardTypeHash {
+    size_t operator()(const std::string&amp; auth) const {
+        return std::hash&lt;std::string&gt;{}(
+            get_card_type(auth));  // VISA, MC, AMEX, DISC
     }
 };
     </code></pre>
@@ -566,39 +629,59 @@ using IntMap_t = std::map&lt;std::string, uint32_t&gt;;
 using GoodHash_t = std::unordered_map&lt;
     std::string, uint32_t&gt;;
 using BadHash_t = std::unordered_map&lt;
-    std::string, uint32_t, TerribleAuthHash&gt;;
-IntMap_t ordered;
-GoodHash_t good_hash;
-BadHash_t bad_hash;
+    std::string, uint32_t, CardTypeHash&gt;;
     </code></pre>
     <p class="subtitle">src/06_pitfall2_collision_catastrophe_txn.cpp</p>
     <aside class="notes">
-        Contrived? Yes. But hash functions that accidentally cluster are more common than you think.
+        "Only four card types — VISA, MC, AMEX, DISCOVER. 5,000 auths distributed across four buckets means ~1,250 per chain. Every lookup walks a linked list of 1,250 nodes. This is less contrived than return 42 — it's the same mistake as the currency hash in Pitfall 1, just a different field with even fewer distinct values."
     </aside>
 </section>
 
-<!-- Slide 30: Catastrophe Results -->
+<!-- Slide 28: Catastrophe Results -->
 <section>
     <h3>Collision Catastrophe: Results</h3>
-    <table>
-        <thead>
-            <tr><th>Auths</th><th>std::map</th><th>unordered (good)</th><th style="color: #ff5555;">unordered (bad)</th></tr>
-        </thead>
-        <tbody>
-            <tr><td>100</td><td>0.01 ms</td><td>0.00 ms</td><td style="color: #ff5555;">0.03 ms</td></tr>
-            <tr><td>500</td><td>0.04 ms</td><td>0.01 ms</td><td style="color: #ff5555;">0.62 ms</td></tr>
-            <tr><td>1,000</td><td>0.09 ms</td><td>0.02 ms</td><td style="color: #ff5555;">2.41 ms</td></tr>
-            <tr><td>2,000</td><td>0.21 ms</td><td>0.05 ms</td><td style="color: #ff5555;">9.84 ms</td></tr>
-            <tr><td>5,000</td><td>0.58 ms</td><td>0.12 ms</td><td style="color: #ff5555;">61.20 ms</td></tr>
-        </tbody>
-    </table>
-    <p class="subtitle">src/06_pitfall2_collision_catastrophe_txn.cpp</p>
+    <div style="display:flex; justify-content:center; margin-top:0.2em;">
+        <svg viewBox="0 0 760 400" xmlns="http://www.w3.org/2000/svg" style="width:100%; max-width:740px; height:auto;">
+            <g stroke="#333" stroke-width="1">
+                <line x1="70" y1="240.8" x2="730" y2="240.8"/>
+                <line x1="70" y1="151.5" x2="730" y2="151.5"/>
+                <line x1="70" y1="62.3" x2="730" y2="62.3"/>
+            </g>
+            <g stroke="#888" stroke-width="2">
+                <line x1="70" y1="40" x2="70" y2="330"/>
+                <line x1="70" y1="330" x2="730" y2="330"/>
+            </g>
+            <g fill="#aaa" font-size="14" text-anchor="end" font-family="sans-serif">
+                <text x="60" y="335">0</text><text x="60" y="246">20</text>
+                <text x="60" y="157">40</text><text x="60" y="68">60</text>
+            </g>
+            <g fill="#aaa" font-size="14" text-anchor="middle" font-family="sans-serif">
+                <text x="70" y="352">100</text><text x="235" y="352">500</text>
+                <text x="400" y="352">1K</text><text x="565" y="352">2K</text><text x="730" y="352">5K</text>
+            </g>
+            <text x="400" y="382" fill="#ccc" font-size="15" text-anchor="middle" font-family="sans-serif">Auth count &rarr;</text>
+            <text x="20" y="185" fill="#ccc" font-size="15" text-anchor="middle" font-family="sans-serif" transform="rotate(-90 20 185)">Lookup time (ms)</text>
+            <polyline fill="none" stroke="#ff5555" stroke-width="3" points="70,330 235,327 400,319 565,286 730,57"/>
+            <g fill="#ff5555"><circle cx="235" cy="327" r="4"/><circle cx="400" cy="319" r="4"/><circle cx="565" cy="286" r="4"/><circle cx="730" cy="57" r="5"/></g>
+            <polyline fill="none" stroke="#42affa" stroke-width="2" points="70,330 235,330 400,330 565,329 730,327"/>
+            <polyline fill="none" stroke="#50fa7b" stroke-width="2" points="70,330 235,330 400,330 565,330 730,330"/>
+            <text x="395" y="205" fill="#ff5555" font-size="15" font-family="monospace" font-weight="bold">unordered + BAD hash &rarr; O(n)</text>
+            <text x="120" y="316" fill="#9fb3c8" font-size="13" font-family="monospace">std::map &amp; good hash &mdash; flat near 0</text>
+        </svg>
+    </div>
+    <div class="fragment" style="position: absolute; top: 17%; left: 3%; background: rgba(0, 0, 0, 0.85); padding: 0.9em 1.1em; border-radius: 8px; border: 2px solid #ff5555; z-index: 10; width: 36%;">
+        <p style="font-size: 1.1em; margin: 0;"><strong>At 5,000 auths:</strong></p>
+        <p style="font-size: 1.6em; color: #ff5555; font-weight: bold; margin: 0.3em 0;">510x slower</p>
+        <p style="font-size: 0.78em; color: #aaa; margin: 0;">than a good hash (61.2 vs 0.12 ms)</p>
+        <p style="font-size: 0.78em; color: #aaa; margin: 0.2em 0 0;">&mdash; <strong style="color:#ff5555;">100x slower</strong> than <code>std::map</code></p>
+    </div>
+    <p class="subtitle">src/06_pitfall2_collision_catastrophe_txn.cpp &mdash; representative run, regenerate on target (scripts/gen_numbers.sh)</p>
     <aside class="notes">
-        The fast container is now 100x slower than the slow one. O(n) linked-list traversal vs O(log n) tree traversal.
+        "Two baselines, say both clearly: the bad hash is 510x slower than the good unordered_map, and 100x slower than the 'slow' std::map it was supposed to beat. O(n) linked-list traversal vs O(log n) tree traversal."
     </aside>
 </section>
 
-<!-- Slide 31: The Shock -->
+<!-- Slide 29: The Shock -->
 <section>
     <h3>With a bad hash:</h3>
     <p style="margin-top: 0.5em;"><code>unordered_map</code> degrades to <span class="big-o">O(n)</span></p>
@@ -606,39 +689,61 @@ BadHash_t bad_hash;
     <h2 class="fragment" style="margin-top: 1em; color: #ff5555;">Your "fast" map is now 100x slower than the "slow" one.</h2>
 </section>
 
-<!-- Slide 32: Pitfall 3 Intro -->
+<!-- Slide 30: Pitfall 3 Intro -->
 <section>
     <h2>Pitfall 3: The Hidden Rehash</h2>
     <p style="margin-top: 1em;">What happens when the table gets too full?</p>
     <div class="danger fragment" style="margin-top: 1em;">
-        <strong>Stop-the-world:</strong> Every element is re-hashed and re-inserted.
+        <strong>Stop-the-world:</strong> Every element is re-hashed and re-linked.
     </div>
 </section>
 
-<!-- Slide 33: Rehash Spikes -->
+<!-- Slide 31: Rehash Spikes -->
 <section>
     <h3>Rehash Latency Spikes</h3>
-    <pre style="font-size: 0.5em;"><code data-trim data-noescape>
-150 TPS x 60 minutes = 540,000 authorizations
-
-Auth #       Time (us)       Buckets     Load Factor   Event
-     0            0.3              2          0.50      <span style="color: #ff5555;">** REHASH **</span>
-    97            3.5            197          0.50      <span style="color: #ff5555;">** REHASH **</span>
-   797           15.0           1597          0.50      <span style="color: #ff5555;">** REHASH **</span>
-    ...
- 25717          382.5          51437          0.50      <span style="color: #ff5555;">** REHASH **</span>
- 51437          788.1         102877          0.50      <span style="color: #ff5555;">** REHASH **</span>
-102877         1356.5         205759          0.50      <span style="color: #ff5555;">** REHASH **</span>
-205759         3087.2         411527          0.50      <span style="color: #ff5555;">** REHASH **</span>
-411527         <span style="color: #ff5555;">7781.9</span>         823117          0.50      <span style="color: #ff5555;">** REHASH **</span>
-    </code></pre>
+    <div style="display:flex; justify-content:center; margin-top:0.2em;">
+        <svg viewBox="0 0 760 400" xmlns="http://www.w3.org/2000/svg" style="width:100%; max-width:740px; height:auto;">
+            <g stroke="#333" stroke-width="1">
+                <line x1="90" y1="265.6" x2="710" y2="265.6"/>
+                <line x1="90" y1="201.1" x2="710" y2="201.1"/>
+                <line x1="90" y1="136.7" x2="710" y2="136.7"/>
+                <line x1="90" y1="72.2" x2="710" y2="72.2"/>
+            </g>
+            <g stroke="#888" stroke-width="2">
+                <line x1="90" y1="40" x2="90" y2="330"/>
+                <line x1="90" y1="330" x2="710" y2="330"/>
+            </g>
+            <g fill="#aaa" font-size="14" text-anchor="end" font-family="sans-serif">
+                <text x="80" y="335">0</text><text x="80" y="271">200</text>
+                <text x="80" y="206">400</text><text x="80" y="142">600</text><text x="80" y="77">800</text>
+            </g>
+            <!-- bars -->
+            <g fill="#ff5555">
+                <rect x="127.5" y="316.4" width="80" height="13.6"/>
+                <rect x="282.5" y="301.1" width="80" height="28.9"/>
+                <rect x="437.5" y="264.5" width="80" height="65.5"/>
+                <rect x="592.5" y="57.0" width="80" height="273" stroke="#ffb3b3" stroke-width="2"/>
+            </g>
+            <g fill="#fff" font-size="14" text-anchor="middle" font-family="sans-serif" font-weight="bold">
+                <text x="167.5" y="310">42</text><text x="322.5" y="295">90</text>
+                <text x="477.5" y="258">203</text><text x="632.5" y="49">847 &micro;s</text>
+            </g>
+            <g fill="#aaa" font-size="14" text-anchor="middle" font-family="sans-serif">
+                <text x="167.5" y="352">6.5K</text><text x="322.5" y="352">13K</text>
+                <text x="477.5" y="352">26K</text><text x="632.5" y="352">52K</text>
+            </g>
+            <text x="400" y="382" fill="#ccc" font-size="15" text-anchor="middle" font-family="sans-serif">elements in the table when each rehash fired &rarr;</text>
+            <text x="22" y="185" fill="#ccc" font-size="15" text-anchor="middle" font-family="sans-serif" transform="rotate(-90 22 185)">rehash spike (&micro;s)</text>
+            <text x="632.5" y="100" fill="#ff5555" font-size="13" text-anchor="middle" font-family="sans-serif">stop-the-world</text>
+        </svg>
+    </div>
     <p class="subtitle">src/07_pitfall3_rehash_txn.cpp</p>
     <aside class="notes">
-        Simulating 150 TPS over 60 minutes — 540K auths. Each rehash re-inserts every element. That 7782 us spike at 411K elements — nearly 8 milliseconds for a single insert in your auth pipeline.
+        "Each rehash re-links every node into new buckets. As the table grows, rehash spikes get larger. That 847 us spike at 52K elements — imagine that in a latency-sensitive auth pipeline."
     </aside>
 </section>
 
-<!-- Slide 34: The Fix - reserve() -->
+<!-- Slide 32: The Fix - reserve() -->
 <section>
     <h3>The Fix: <code>reserve()</code></h3>
     <table>
@@ -646,33 +751,131 @@ Auth #       Time (us)       Buckets     Load Factor   Event
             <tr><th></th><th>Without reserve()</th><th style="color: #50fa7b;">With reserve()</th></tr>
         </thead>
         <tbody>
-            <tr><td>Avg insert time</td><td>0.10 us</td><td style="color: #50fa7b;">0.04 us</td></tr>
-            <tr><td>Max insert time</td><td style="color: #ff5555;">9259.04 us</td><td style="color: #50fa7b;">17.21 us</td></tr>
-            <tr><td>Rehash events</td><td style="color: #ff5555;">19</td><td style="color: #50fa7b;">0</td></tr>
+            <tr><td>Avg insert time</td><td>0.42 us</td><td style="color: #50fa7b;">0.31 us</td></tr>
+            <tr><td>Max insert time</td><td style="color: #ff5555;">2847.00 us</td><td style="color: #50fa7b;">8.21 us</td></tr>
+            <tr><td>Rehash events</td><td style="color: #ff5555;">21</td><td style="color: #50fa7b;">0</td></tr>
         </tbody>
     </table>
-    <pre style="margin-top: 0.5em;"><code class="language-cpp" data-trim>
+    <pre style="margin-top: 0.5em; font-size: 0.46em;"><code class="language-cpp" data-trim>
 std::unordered_map&lt;std::string, uint32_t&gt; auth_cache;
-// One line. Zero rehashes.
-auth_cache.reserve(expected_auth_count);  
+auth_cache.reserve(expected_auth_count);   // one line, zero rehashes
     </code></pre>
     <p class="subtitle">src/08_pitfall3_reserve_fix_txn.cpp</p>
     <aside class="notes">
-        One line of code. Max spike goes from 9259 us to 17 us. A 538x improvement in worst-case latency. You know your hourly TPS — call reserve().
+        One line of code. Max spike 2847us to 8us, 347x improvement in worst-case latency.
+        The trade-off: you pay memory upfront whether you fill it or not. Over-reserve and the sparse bucket array hurts cache utilization, which can slow lookups.
+        Massive over-reserve is worse than organic growth. Reserve to expected size with a small margin.
+        Sweet spot: you know your working set (BIN table size, peak TPS). Reserve to that. Don't guess big.
     </aside>
 </section>
 
 <!-- ============================================================ -->
-<!-- SECTION 5: Beyond unordered_map (3 min) -->
+<!-- SECTION 5 (NEW): Security - HashDoS & CVEs (~4 min, elastic) -->
 <!-- ============================================================ -->
 
-<!-- Slide 35: Section Title -->
+<!-- Section Title -->
+<section class="section-title">
+    <h2>When <span class="big-o">O(no-no-no)</span> becomes a <span style="color:#ff5555;">CVE</span></h2>
+    <h3>HashDoS: collisions as a weapon</h3>
+    <aside class="notes">
+        "Pitfall 2 was an accident. Now imagine an attacker doing it ON PURPOSE. This section is the elastic one — if I'm behind, I'll trim the CVE list; if I'm ahead, I linger on mitigations."
+    </aside>
+</section>
+
+<!-- The idea -->
+<section>
+    <h3>The attack</h3>
+    <div style="text-align: left; margin-left: 8%; font-size: 0.9em;">
+        <p class="fragment">1. Your server puts user input into an <code>unordered_map</code> (form fields, JSON keys, headers).</p>
+        <p class="fragment">2. The attacker knows your hash &mdash; it's open source.</p>
+        <p class="fragment">3. They send keys <strong>crafted to all collide</strong> into one bucket.</p>
+        <p class="fragment">4. Every insert/lookup is now <span class="big-o">O(n)</span>. One small request burns 100% CPU.</p>
+    </div>
+    <div class="danger fragment" style="margin-top: 1em;">
+        A few hundred KB of crafted keys can pin a core for minutes.
+    </div>
+    <aside class="notes">
+        "It's a denial-of-service with an almost-free payload. The asymmetry is the danger: tiny request, enormous server cost."
+    </aside>
+</section>
+
+<!-- Live demo + results -->
+<section>
+    <h3>The collision flood <span class="subtitle">[LIVE]</span></h3>
+    <pre style="font-size: 0.46em;"><code class="language-cpp" data-trim>
+// Weak hash an attacker can defeat by hand:
+struct WeakSumHash {
+    size_t operator()(const std::string&amp; s) const {
+        size_t h = 0;                       // anagrams collide!
+        for (char c : s) h += (unsigned char)c;
+        return h;
+    }
+};</code></pre>
+    <table style="font-size: 0.8em;">
+        <thead><tr><th>Crafted keys</th><th>Strong hash</th><th style="color:#ff5555;">Weak hash (attacked)</th><th>Worst bucket</th></tr></thead>
+        <tbody>
+            <tr><td>1,000</td><td>1.7 ms</td><td style="color:#ff5555;">4.7 ms</td><td>1,000</td></tr>
+            <tr><td>4,000</td><td>6.9 ms</td><td style="color:#ff5555;">55.8 ms</td><td>4,000</td></tr>
+            <tr><td>8,000</td><td>14.1 ms</td><td style="color:#ff5555;">529.7 ms</td><td>8,000</td></tr>
+        </tbody>
+    </table>
+    <p class="subtitle">src/17_hashdos_attack.cpp &mdash; representative run, regenerate on target</p>
+    <aside class="notes">
+        "Worst bucket equals N — every key landed in one chain. The cost grows quadratically with the attack size. Safety net: pre-built binary + recorded video if the live run misbehaves."
+    </aside>
+</section>
+
+<!-- Real CVEs -->
+<section>
+    <h3>This is not hypothetical</h3>
+    <div style="text-align: left; margin-left: 8%; font-size: 0.82em;">
+        <p class="fragment"><strong>28C3, Dec 2011</strong> &mdash; Klink &amp; W&auml;lde, "Efficient DoS on Web Application Platforms." One talk, many languages.</p>
+        <p class="fragment"><strong>oCERT-2011-003</strong> &mdash; PHP, Python, Ruby, Java, Node, ASP.NET all shipped emergency patches.</p>
+        <p class="fragment" style="font-size: 0.95em; color:#aaa;">CVE-2011-3414 (ASP.NET) &middot; CVE-2011-4815 (Ruby) &middot; CVE-2012-1150 (Python) &middot; Node.js cookie/querystring fixes</p>
+        <p class="fragment"><strong>The fix the ecosystem chose:</strong> randomized hashing. Python adopted SipHash + a random seed (PEP 456).</p>
+    </div>
+    <aside class="notes">
+        "Every major web platform was vulnerable at once because they all used predictable string hashes. The industry-wide response was to randomize the hash."
+    </aside>
+</section>
+
+<!-- Mitigations -->
+<section>
+    <h3>Mitigations</h3>
+    <pre style="font-size: 0.5em;"><code class="language-cpp" data-trim>
+// Per-process random salt: attacker can't precompute collisions
+static const uint64_t kSalt = seed_from_os_rng();
+struct SaltedHash {
+    size_t operator()(const std::string&amp; s) const {
+        size_t h = std::hash&lt;std::string&gt;{}(s);
+        return h ^ (kSalt + 0x9e3779b97f4a7c15ULL + (h&lt;&lt;6) + (h&gt;&gt;2));
+    }
+};</code></pre>
+    <div style="text-align: left; margin-left: 8%; font-size: 0.78em;">
+        <p class="fragment"><strong>Randomized/keyed hash</strong> (SipHash) &mdash; the real fix. Salt changes every run.</p>
+        <p class="fragment"><strong>The paradox:</strong> <code>reserve()</code> also helps &mdash; fewer rehashes = a smaller attack window.</p>
+        <p class="fragment"><strong>Untrusted keys?</strong> Cap them, or fall back to a sorted container under load.</p>
+    </div>
+    <p class="subtitle">src/20_randomized_hashing.cpp</p>
+    <aside class="notes">
+        hash_combine (src/05) solves distribution: mixes multiple fields into one well-spread hash. But seed=0, deterministic every run. An attacker who knows your hash can precompute collisions offline.
+        SaltedHash (src/20) solves predictability: per-process random salt means the attacker can't know the output. They're complementary. Production does both: combine fields properly AND mix in a random salt.
+        reserve() callback from pitfall 3: fewer rehashes = smaller attack window.
+        Don't hand-roll crypto. Use a vetted keyed hash (SipHash).
+    </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 6: Beyond unordered_map (~7 min) -->
+<!-- ============================================================ -->
+
+<!-- Slide 33: Section Title -->
 <section class="section-title">
     <h2>Beyond <code>unordered_map</code></h2>
     <h3>C++23 &amp; Modern Alternatives</h3>
 </section>
 
-<!-- Slide 36: flat_map -->
+<!-- Slide 34: flat_map -->
 <section>
     <h3><code>std::flat_map</code> (C++23)</h3>
     <pre><code class="language-cpp" data-trim>
@@ -692,47 +895,14 @@ auto it = bin_table.find("411111");
     </ul>
     <p class="subtitle">src/09_cpp23_flat_map_txn.cpp</p>
     <aside class="notes">
-        A sorted container backed by contiguous memory — it gives you std::map semantics with std::vector cache performance.<hr/>
-        Perfect for lookup tables loaded once and queried millions of times. BIN tables, country code maps, MCC code tables. Currently over 100 million BINs are available, but in practice only 300K to 1.2 million are actively in use.
+        "Perfect for lookup tables loaded once and queried millions of times. BIN tables, country code maps, MCC code tables."
     </aside>
 </section>
 
-<!-- Slide 37: flat_map BIN Table Results -->
-<section>
-    <h3>BIN Table Iteration: 500K Entries</h3>
-    <table style="font-size: 0.85em;">
-        <thead>
-            <tr><th>Container</th><th>Iteration Time</th><th>Notes</th></tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><code>std::flat_map</code></td>
-                <td style="color: #50fa7b;">2.75 ms</td>
-                <td style="font-size: 0.8em;">Contiguous memory, cache-friendly</td>
-            </tr>
-            <tr>
-                <td><code>std::map</code></td>
-                <td>5.96 ms</td>
-                <td style="font-size: 0.8em;">Node-based, pointer chasing</td>
-            </tr>
-            <tr>
-                <td><code>std::unordered_map</code></td>
-                <td style="color: #ff5555;">18.48 ms</td>
-                <td style="font-size: 0.8em;">Scattered buckets, worst iteration</td>
-            </tr>
-        </tbody>
-    </table>
-    <p style="margin-top: 0.8em; font-size: 0.75em;">Loaded once at startup, queried millions of times per day</p>
-    <p class="subtitle">src/09_cpp23_flat_map_txn.cpp</p>
-    <aside class="notes">
-        flat_map is over 2x faster than std::map and nearly 7x faster than unordered_map for iteration. For a BIN table that loads once and gets queried all day, this is a huge win.
-    </aside>
-</section>
-
-<!-- Slide 38: Heterogeneous Lookup Setup -->
+<!-- Slide 35: Heterogeneous Lookup -->
 <section>
     <h3>Heterogeneous Lookup (C++20)</h3>
-    <pre style="font-size: 0.45em;"><code class="language-cpp" data-trim>
+    <pre style="font-size: 0.4em;"><code class="language-cpp" data-trim>
 struct StringHash {
     using is_transparent = void;  // Magic marker!
 
@@ -744,27 +914,6 @@ struct StringHash {
     }
 };
 
-struct StringEqual {
-    using is_transparent = void;
-
-    bool operator()(std::string_view a, std::string_view b) const {
-        return a == b;
-    }
-};
-    </code></pre>
-    <p class="subtitle">src/10_cpp20_heterogeneous_lookup_txn.cpp</p>
-    <aside class="notes">
-        Search for elements in unordered associative containers using different key type.<hr/> 
-        Both the hasher and equality must declare is_transparent.<hr/> 
-        StringEqual takes string_view on both sides so it can compare string vs string_view without conversion.<hr/>
-        ISO8583 defines credit/debit card transactions.  uses bitmap to define fields in use.  string_view incredibly efficient.
-    </aside>
-</section>
-
-<!-- Slide 39: Heterogeneous Lookup Usage -->
-<section>
-    <h3>Heterogeneous Lookup: Usage</h3>
-    <pre style="font-size: 0.5em;"><code class="language-cpp" data-trim>
 std::unordered_map&lt;std::string, MerchantInfo,
                     StringHash, StringEqual&gt; cache;
 
@@ -774,132 +923,545 @@ auto it = cache.find(std::string(sv_from_iso_message));
 // Transparent: zero allocation!
 auto it = cache.find(sv_from_iso_message);  // Direct!
     </code></pre>
+    <p class="fragment" style="font-size:0.62em; color:#ffb86c; text-align:left; margin:0.15em 5%;">
+        Honest caveat: for a 3-char MML tag, <strong>SSO</strong> means the temporary never hit the heap &mdash; no win there.
+        The payoff is on <em>longer</em> keys (merchant IDs, JSON field paths) that exceed SSO.
+    </p>
     <p class="subtitle">src/10_cpp20_heterogeneous_lookup_txn.cpp</p>
     <aside class="notes">
-        StringHash and StringEqual 3rd and 4th params. find() accepts string_view directly — no temporary string allocated.<hr/> Every find() with a string_view used to allocate a temporary string. With transparent hashers, zero allocations.<hr/>
-        ISO 8583 msg has over 128 potential fields.  string_view and heterogeneous lookup ftw.
+        "Conventional wisdom: every find() with a string_view allocates a temporary string, and transparent hashers make it zero-alloc. True — but be precise, because this audience will be: short keys live in the small-string buffer, so there's no heap allocation to avoid. In the real auth service the 3-char tag lookups gain nothing here. The win is real only when keys are longer than SSO — merchant IDs, field paths. Same lesson as the key-length slide: know your key size before you claim a speedup."
     </aside>
 </section>
 
-<!-- Slide 40: Heterogeneous Lookup Results -->
-<section>
-    <h3>Zero-Alloc Lookups: 540K Merchant Resolutions</h3>
-    <table style="font-size: 0.85em;">
-        <thead>
-            <tr><th>Method</th><th>Time</th><th>Allocations</th></tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>Traditional <code>find(std::string(sv))</code></td>
-                <td style="color: #ff5555;">3.54 ms</td>
-                <td style="color: #ff5555;">540,000</td>
-            </tr>
-            <tr>
-                <td>Transparent <code>find(sv)</code></td>
-                <td style="color: #50fa7b;">2.57 ms</td>
-                <td style="color: #50fa7b;">0</td>
-            </tr>
-        </tbody>
-    </table>
-    <div class="fix" style="font-size: 0.75em; margin-top: 0.8em;">
-        <strong>1.38x faster</strong> &mdash; and zero heap allocations per lookup
-    </div>
-    <p style="margin-top: 0.6em; font-size: 0.7em;">150 TPS &times; 60 min = 540,000 lookups/hour</p>
-    <p class="subtitle">src/10_cpp20_heterogeneous_lookup_txn.cpp</p>
-    <aside class="notes">
-        The speedup may look modest at 1.38x, but the real win is zero heap allocations. Every eliminated allocation reduces memory fragmentation and GC-like pressure. Over a full day at 150 TPS thats nearly 13 million avoided allocations.
-    </aside>
-</section>
-
-<!-- Slide 41: Iterator Stability -->
+<!-- Slide 36: Iterator Stability -->
 <section>
     <h3>Iterator Stability: When to Use <code>std::map</code></h3>
-    <pre style="font-size: 0.5em;"><code class="language-cpp" data-trim>
-using AuthCache_t = std::unordered_map&lt;
-    std::string, AuthRecord&gt;;
-AuthCache_t auth_cache;
+    <pre style="font-size: 0.48em;"><code class="language-cpp" data-trim>
+std::unordered_map&lt;std::string, AuthRecord&gt; auth_cache;
 auth_cache["TXN_0001"] = {"AUTH_A1B2", 5000};
 
-AuthRecord* ptr = &amp;auth_cache["TXN_0001"];
+auto pending = auth_cache.find("TXN_0001"); // reversal handler
 
-// New auths flood in, triggering rehash...
-for (int i = 3; i &lt; 20; ++i)
+for (int i = 3; i &lt; 20; ++i)               // rehash triggers...
     auth_cache["TXN_" + std::to_string(i)] = { /* ... */ };
 
-// pending_reversal is NOW DANGLING!
+// pending is NOW INVALID — UB to dereference!
     </code></pre>
     <div class="danger" style="font-size: 0.7em;">
-        <code>unordered_map</code>: rehash invalidates <strong>ALL</strong> pointers/iterators
+        <code>unordered_map</code>: rehash invalidates <strong>iterators</strong> (pointers/references survive)
     </div>
     <div class="fix" style="font-size: 0.7em;">
-        <code>std::map</code>: insertion <strong>NEVER</strong> invalidates existing references
+        <code>std::map</code>: insertion <strong>NEVER</strong> invalidates iterators, pointers, or references
     </div>
     <p class="subtitle">src/11_iterator_stability_txn.cpp</p>
     <aside class="notes">
-        If your system holds pointers to in-flight records across insertions, use std::map. Period.
+        Iterators break because rehash rebuilds the bucket linked-list wiring. The nodes stay at the same address (pointers safe), but the next/prev links change (iterators stale). If your system holds iterators across insertions, std::map is the correct choice.
     </aside>
 </section>
 
 <!-- ============================================================ -->
-<!-- SECTION 6: Conclusion (5 min) -->
+<!-- SECTION 7 (NEW): Open Addressing & Faster Maps (~8 min) -->
 <!-- ============================================================ -->
 
-<!-- Slide 42: Section Title -->
+<section class="section-title">
+    <h2>Open Addressing</h2>
+    <h3>Why your hot path might not want <code>std::unordered_map</code></h3>
+    <aside class="notes">
+        Node-based chaining means every collision step chases a pointer to a random heap address. On a lookup-heavy hot path (millions of BIN lookups/sec), that's a cache miss on every probe.
+        Open-addressing alternatives (SwissTable, flat_hash_map) store keys contiguously, so probing stays in cache. Typically 2x+ faster.
+        unordered_map isn't always the answer in either direction: need stability, use std::map. Need speed, use a flat hash map.
+    </aside>
+</section>
+
+<!-- Why chaining hurts -->
+<section>
+    <h3>Why chaining hurts</h3>
+    <div style="text-align: left; margin-left: 6%; font-size: 0.9em;">
+        <p class="fragment">Standard <code>unordered_map</code> = bucket array &rarr; <strong>heap-allocated nodes</strong> in a linked list.</p>
+        <p class="fragment">Every collision step is a <strong>pointer chase</strong> to a random address &rarr; likely <span class="big-o">cache miss</span>.</p>
+        <p class="fragment">Remember: the standard's bucket + stability guarantees <em>force</em> this layout.</p>
+    </div>
+    <div class="fragment" style="margin-top: 1em; font-family: monospace; font-size: 0.7em; color:#888;">
+        bucket[] &rarr; node@0x7f3a &rarr; node@0x91c2 &rarr; node@0x4b08 &rarr; ...
+        <br>(each arrow = a jump to somewhere else in RAM)
+    </div>
+    <aside class="notes">
+        "The container is correct and convenient, but cache-hostile by design. Chasing pointers to scattered nodes is the opposite of what modern CPUs want."
+    </aside>
+</section>
+
+<!-- Open addressing concept -->
+<section>
+    <h3>Open addressing: keys live <em>in</em> the array</h3>
+    <div style="text-align: left; margin-left: 6%; font-size: 0.85em;">
+        <p class="fragment">No nodes. On collision, <strong>probe the next slot</strong> (linear / quadratic / SwissTable groups).</p>
+        <p class="fragment"><span class="big-o-good">+</span> Contiguous memory, cache-friendly, no per-element allocation.</p>
+        <p class="fragment"><span class="big-o">&minus;</span> Tombstones on erase, sensitive to load factor, and&hellip;</p>
+        <p class="fragment" style="color:#ff5555;"><span class="big-o">&minus;</span> references invalidate on <em>any</em> insert (a flat map rehashes constantly).</p>
+    </div>
+    <aside class="notes">
+        "This is the SwissTable idea Google open-sourced as abseil. Keys sit in one array; you probe forward on collision. You trade reference stability for cache locality."
+    </aside>
+</section>
+
+<!-- The contenders + benchmark -->
+<section>
+    <h3>The real-world options</h3>
+    <div style="text-align: left; margin-left: 6%; font-size: 0.8em;">
+        <p><code>boost::unordered_flat_map</code> &mdash; drop-in-ish, Boost 1.81+</p>
+        <p><code>absl::flat_hash_map</code> &mdash; Google SwissTable</p>
+        <p><code>ankerl::unordered_dense</code> &mdash; header-only, very fast</p>
+    </div>
+    <table style="font-size: 0.8em; margin-top: 0.6em;">
+        <thead><tr><th>1M BIN lookups</th><th><code>unordered_map</code></th><th style="color:#50fa7b;">flat hash map</th></tr></thead>
+        <tbody>
+            <tr><td>random find</td><td>9.8 ms</td><td style="color:#50fa7b;">~2&ndash;5 ms</td></tr>
+        </tbody>
+    </table>
+    <p class="subtitle">src/13_open_addressing_compare.cpp &mdash; regenerate with Boost on target (~2x+; fallback shown here)</p>
+    <aside class="notes">
+        "Real numbers come from YOUR machine with Boost linked — the repo has a hand-rolled fallback so it always builds. Expect a 2x or better win on cache-bound lookups. But the catch matters:"
+    </aside>
+</section>
+
+<!-- The catch -->
+<section>
+    <h2>The catch</h2>
+    <p style="margin-top: 0.5em;">Flat maps invalidate pointers/references on <strong>every insert</strong>.</p>
+    <p class="fragment" style="margin-top: 1em;">Faster &mdash; but you give up the one thing <code>std::map</code> guaranteed.</p>
+    <p class="fragment subtitle" style="margin-top: 1em;">It's the iterator-stability pitfall again, dialed to 11.</p>
+    <aside class="notes">
+        "If you hold references across inserts — like our in-flight reversal handler — a flat map is the wrong tool. This connects straight back to the stability discussion."
+    </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 8 (NEW): Memory Deep Dive (~9 min) -->
+<!-- ============================================================ -->
+
+<section class="section-title">
+    <h2>Memory</h2>
+    <h3>Where <span class="big-o-good">O(1)</span> goes to die: the cache</h3>
+</section>
+
+<!-- Layout -->
+<section>
+    <h3>Two layouts</h3>
+    <div class="columns" style="gap: 1.5em; font-size: 0.8em;">
+        <div class="col">
+            <p><strong>Node-based</strong> (<code>map</code>, <code>unordered_map</code>)</p>
+            <div style="font-family: monospace; color:#ff5555; font-size: 0.85em;">
+                [bucket]→node→node<br>scattered across the heap<br>+ allocation header per node
+            </div>
+        </div>
+        <div class="col">
+            <p><strong>Contiguous</strong> (<code>flat_map</code>, flat hash)</p>
+            <div style="font-family: monospace; color:#50fa7b; font-size: 0.85em;">
+                [k|k|k|k|k|k|k|k]<br>one array, one allocation<br>prefetcher-friendly
+            </div>
+        </div>
+    </div>
+    <aside class="notes">
+        "Same logical data, completely different physical reality. The CPU loves the right-hand picture."
+    </aside>
+</section>
+
+<!-- Per-element overhead -->
+<section>
+    <h3>Per-element overhead <span class="subtitle">(measured, not quoted)</span></h3>
+    <div style="display:flex; justify-content:center;">
+        <svg viewBox="0 0 760 270" xmlns="http://www.w3.org/2000/svg" style="width:100%; max-width:760px; height:auto;">
+            <!-- legend -->
+            <rect x="280" y="14" width="16" height="16" fill="#50fa7b"/>
+            <text x="302" y="27" fill="#ccc" font-size="14" font-family="sans-serif">data (16 B)</text>
+            <rect x="430" y="14" width="16" height="16" fill="#ff5555"/>
+            <text x="452" y="27" fill="#ccc" font-size="14" font-family="sans-serif">container overhead</text>
+            <!-- row labels -->
+            <g fill="#ddd" font-size="15" text-anchor="end" font-family="monospace">
+                <text x="160" y="80">std::map</text>
+                <text x="160" y="145">std::unordered_map</text>
+                <text x="160" y="210">flat vector&lt;pair&gt;</text>
+            </g>
+            <!-- bars: data (green) + overhead (red), 11 px per byte from x=170 -->
+            <g>
+                <rect x="170" y="55"  width="176" height="38" fill="#50fa7b"/>
+                <rect x="346" y="55"  width="352" height="38" fill="#ff5555"/>
+                <rect x="170" y="120" width="176" height="38" fill="#50fa7b"/>
+                <rect x="346" y="120" width="216" height="38" fill="#ff5555"/>
+                <rect x="170" y="185" width="176" height="38" fill="#50fa7b"/>
+            </g>
+            <g fill="#fff" font-size="15" font-family="sans-serif" font-weight="bold">
+                <text x="708" y="79">48 B</text>
+                <text x="572" y="144">35.6 B</text>
+                <text x="356" y="209">16 B</text>
+            </g>
+            <!-- x axis -->
+            <line x1="170" y1="238" x2="720" y2="238" stroke="#888" stroke-width="1.5"/>
+            <g fill="#aaa" font-size="13" text-anchor="middle" font-family="sans-serif">
+                <text x="170" y="256">0</text><text x="280" y="256">10</text><text x="390" y="256">20</text>
+                <text x="500" y="256">30</text><text x="610" y="256">40</text><text x="720" y="256">50</text>
+            </g>
+            <text x="445" y="256" fill="#777" font-size="13" font-family="sans-serif" text-anchor="start" opacity="0"> </text>
+        </svg>
+    </div>
+    <p style="font-size:0.7em; margin-top:0.4em;">16 data bytes/elem. A counting allocator tallies real heap bytes &mdash; run it on your stdlib.</p>
+    <p class="subtitle">src/14_memory_overhead.cpp</p>
+    <aside class="notes">
+        "These are real numbers from a counting allocator, not a slide I made up — that's the whole point. On 1M elements, map costs 3x the raw data. Your stdlib may differ; the tool prints YOUR numbers."
+    </aside>
+</section>
+
+<!-- Cache cliff -->
+<section>
+    <h3>The cache cliff</h3>
+    <div style="display:flex; justify-content:center; margin-top:0.2em;">
+        <svg viewBox="0 0 760 400" xmlns="http://www.w3.org/2000/svg" style="width:100%; max-width:720px; height:auto;">
+            <g stroke="#333" stroke-width="1">
+                <line x1="70" y1="257.5" x2="730" y2="257.5"/>
+                <line x1="70" y1="185" x2="730" y2="185"/>
+                <line x1="70" y1="112.5" x2="730" y2="112.5"/>
+            </g>
+            <g stroke="#888" stroke-width="2">
+                <line x1="70" y1="40" x2="70" y2="330"/>
+                <line x1="70" y1="330" x2="730" y2="330"/>
+            </g>
+            <g fill="#aaa" font-size="14" text-anchor="end" font-family="sans-serif">
+                <text x="60" y="335">0</text><text x="60" y="262">4</text>
+                <text x="60" y="190">8</text><text x="60" y="117">12</text><text x="60" y="45">16</text>
+            </g>
+            <g fill="#aaa" font-size="14" text-anchor="middle" font-family="sans-serif">
+                <text x="70" y="352">256</text><text x="259" y="352">4K</text>
+                <text x="447" y="352">64K</text><text x="636" y="352">1M</text><text x="730" y="352">4M</text>
+            </g>
+            <text x="400" y="382" fill="#ccc" font-size="15" text-anchor="middle" font-family="sans-serif">working set (log scale) &rarr;</text>
+            <text x="20" y="185" fill="#ccc" font-size="15" text-anchor="middle" font-family="sans-serif" transform="rotate(-90 20 185)">ns / lookup</text>
+            <polyline fill="none" stroke="#ffb86c" stroke-width="3" points="70,315.5 164,315.5 259,311.9 353,306.4 447,297.4 541,284.7 636,174.1 730,56.3"/>
+            <g fill="#ffb86c"><circle cx="70" cy="315.5" r="4"/><circle cx="164" cy="315.5" r="4"/><circle cx="259" cy="311.9" r="4"/><circle cx="353" cy="306.4" r="4"/><circle cx="447" cy="297.4" r="4"/><circle cx="541" cy="284.7" r="4"/><circle cx="636" cy="174.1" r="4"/></g>
+            <circle cx="730" cy="56.3" r="5" fill="#ff5555"/>
+            <text x="150" y="300" fill="#9fb3c8" font-size="13" font-family="sans-serif">fits in cache &rarr; flat</text>
+            <text x="600" y="120" fill="#ff5555" font-size="14" text-anchor="end" font-family="sans-serif" font-weight="bold">spills to RAM &rarr; ~19&times;</text>
+        </svg>
+    </div>
+    <p class="fragment" style="margin-top:0.5em;">Same <span class="big-o-good">O(1)</span> &mdash; but the constant grew <strong>~19x</strong> as the table left cache.</p>
+    <p class="subtitle">src/15_cache_effects.cpp</p>
+    <aside class="notes">
+        "This is the most important slide in the section. The complexity never changed — it's O(1) the whole way down. But the real-world latency climbs 19x because we fell out of cache. 'O(1)' is a statement about scaling, not speed."
+    </aside>
+</section>
+
+<!-- Allocators + stdlib differences -->
+<section>
+    <h3>Two more levers</h3>
+    <div style="text-align: left; margin-left: 6%; font-size: 0.82em;">
+        <p class="fragment"><strong>Allocators:</strong> <code>std::pmr::unordered_map</code> + a pool/monotonic buffer keeps nodes close together &mdash; clawing back some locality. Great for fixed-size auth records.</p>
+        <p class="fragment"><strong>Stdlib matters:</strong> libstdc++ vs libc++ vs MSVC differ on bucket growth, default <code>max_load_factor</code>, and node layout.</p>
+        <p class="fragment" style="color:#42affa;">Same code, GCC vs Clang on this laptop &rarr; different memory + timings. Benchmarks don't transfer.</p>
+    </div>
+    <aside class="notes">
+        "Two practical takeaways: pmr allocators are an easy locality win for node-based maps, and never trust a hash-map benchmark from a different stdlib than the one you ship."
+    </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 9 (NEW): Profiling & Production (~7 min) -->
+<!-- ============================================================ -->
+
+<section class="section-title">
+    <h2>Profiling &amp; Production</h2>
+    <h3>Diagnosing hash maps in the wild</h3>
+</section>
+
+<!-- Hardware counters -->
+<section>
+    <h3>Measure cache misses, don't guess</h3>
+    <pre style="font-size: 0.44em;"><code data-trim data-noescape>
+# Linux (in Docker on the Mac):
+perf stat -e cache-misses ./19_perf_workload chained
+perf stat -e cache-misses ./19_perf_workload flat
+# macOS: Instruments "Counters", or  mperf -- ./19_perf_workload flat</code></pre>
+    <div style="text-align:left; margin-left:6%; font-size:0.8em; margin-top:0.5em;">
+        <p class="fragment">Chained: high cache-miss rate (node chasing).</p>
+        <p class="fragment">Flat: sequential access, far fewer misses.</p>
+        <p class="fragment" style="color:#888;">(Captured ahead of time &mdash; never profile live on stage.)</p>
+    </div>
+    <p class="subtitle">src/19_perf_workload.cpp</p>
+    <aside class="notes">
+        "perf is Linux-only, so on the Mac I run this in a Docker container and capture the output beforehand. The headline: the cache-miss counter is the difference between chained and flat, made visible."
+    </aside>
+</section>
+
+<!-- Bucket inspection -->
+<section>
+    <h3>Find the hot bucket at runtime</h3>
+    <pre style="font-size: 0.44em;"><code class="language-cpp" data-trim>
+for (size_t b = 0; b &lt; m.bucket_count(); ++b)
+    if (m.bucket_size(b) &gt; 8 * mean)
+        log_hot_bucket(b, m.bucket_size(b));   // hash problem, not load</code></pre>
+    <pre style="font-size: 0.5em; margin-top:0.4em;"><code data-trim data-noescape>
+--- clustering hash ---
+  occupied buckets=100   max bucket=500   (ideal ~0.6)
+  hot buckets (&gt; 8): 100   <span style="color:#ff5555;">&lt;-- investigate the hash!</span></code></pre>
+    <p class="subtitle">src/16_bucket_inspection.cpp</p>
+    <aside class="notes">
+        "You don't need a debugger to catch a bad hash in prod. The standard bucket interface lets you spot a bucket many times the mean — drop this behind a debug endpoint or a periodic metric."
+    </aside>
+</section>
+
+<!-- The container is rarely your bottleneck (R2-2) -->
+<section>
+    <h3>The container is rarely your bottleneck</h3>
+    <p style="text-align:left; margin:0.3em 5%; font-size:0.8em;">Real auth service: each lookup table is behind a shared lock, unlocked <em>per lookup</em>, on every worker thread. 2M lookups, 4 threads:</p>
+    <table style="font-size: 0.72em;">
+        <thead><tr><th>getShared() per lookup</th><th><code>std::map</code></th><th><code>unordered_map</code></th></tr></thead>
+        <tbody>
+            <tr><td>contended</td><td>501 ms</td><td>548 ms</td></tr>
+        </tbody>
+    </table>
+    <p class="fragment" style="font-size:0.8em; margin-top:0.4em;">Lock-bound &mdash; the container choice is <strong>noise</strong>. Now hoist the lock out of the loop:</p>
+    <table class="fragment" style="font-size: 0.72em;">
+        <thead><tr><th>getShared() hoisted</th><th><code>std::map</code></th><th><code>unordered_map</code></th></tr></thead>
+        <tbody>
+            <tr><td>lock once / thread</td><td style="color:#50fa7b;">48 ms</td><td style="color:#50fa7b;">20 ms</td></tr>
+        </tbody>
+    </table>
+    <p class="fragment" style="color:#42affa;">10&ndash;27x from moving the lock &mdash; <em>then</em> the container matters. Profile first.</p>
+    <p class="subtitle">src/21_locking_dominates.cpp &mdash; representative run, regenerate on target</p>
+    <aside class="notes">
+        "This is the humility slide. We spent the whole talk making the map faster — but in this real service the per-lookup shared lock dominated, and swapping the container did almost nothing under contention. Hoisting the lock was 10 to 27x. Only after that does map-vs-unordered even show up. Always find the real bottleneck before you optimize the famous one."
+    </aside>
+</section>
+
+<!-- Multithreading -->
+<section>
+    <h3>Concurrency: it's not thread-safe</h3>
+    <div style="text-align:left; margin-left:6%; font-size:0.8em;">
+        <p class="fragment"><code>unordered_map</code> &mdash; concurrent read+write is <strong style="color:#ff5555;">UB</strong>. Read-only concurrent access is fine.</p>
+        <p class="fragment">One global mutex serializes everything. <strong>Sharding</strong> (N maps, N locks) restores parallelism:</p>
+    </div>
+    <table style="font-size: 0.8em; margin-top:0.4em;">
+        <thead><tr><th>4 threads, 75% reads</th><th>single mutex</th><th style="color:#50fa7b;">sharded &times;16</th></tr></thead>
+        <tbody><tr><td>throughput</td><td>149.6 ms</td><td style="color:#50fa7b;">69.5 ms (2.15x)</td></tr></tbody>
+    </table>
+    <p class="fragment" style="font-size:0.75em; margin-top:0.4em;">Production: <code>tbb::concurrent_hash_map</code>, <code>folly::ConcurrentHashMap</code>. And a rehash mid-flight is especially dangerous.</p>
+    <p class="subtitle">src/18_sharded_concurrent.cpp</p>
+    <aside class="notes">
+        "Two things people get wrong: they assume reads-with-writes are safe (they're not), and they put one mutex around a giant map and wonder why it doesn't scale. Sharding is the simple fix; for real workloads use a purpose-built concurrent map."
+    </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 9.5 (NEW): Case Study - a real auth service (~3 min) -->
+<!-- ============================================================ -->
+
+<section class="section-title">
+    <h2>Case Study</h2>
+    <h3>Auditing a real auth service</h3>
+</section>
+
+<!-- The setup -->
+<section>
+    <h3>The question</h3>
+    <p style="margin-top:0.5em;">A real payment-auth service. ~10 maps. <strong>Every one is <code>std::map</code>.</strong></p>
+    <p class="fragment" style="font-size:1.2em; margin-top:0.8em;">"Should we switch them all to <code>unordered_map</code>?"</p>
+    <p class="fragment subtitle" style="margin-top:0.8em;">Let's run them through the framework instead of swapping on reflex.</p>
+    <aside class="notes">
+        "I got handed exactly this. The instinct — 'unordered_map is faster, swap everything' — is what this whole talk warns against. So we audited every map and every call site."
+    </aside>
+</section>
+
+<!-- The verdict table -->
+<section>
+    <h3>One map at a time</h3>
+    <table style="font-size: 0.62em;">
+        <thead><tr><th>Map</th><th>Role</th><th>Verdict</th><th>Why</th></tr></thead>
+        <tbody>
+            <tr><td>field validations</td><td>read-mostly lookup</td><td style="color:#50fa7b;">switch</td><td>per-request <code>find()</code>, string key</td></tr>
+            <tr><td>xml↔mml mappings</td><td>read-mostly lookup</td><td style="color:#50fa7b;">switch</td><td>point lookups only</td></tr>
+            <tr class="fragment"><td>request tracking</td><td>grows/shrinks w/ load</td><td style="color:#ffb86c;">keep</td><td>would <strong>rehash-spike</strong> under load (Pitfall 3)</td></tr>
+            <tr class="fragment"><td>transient request map</td><td>iterated → MML+SHA1</td><td style="color:#ff5555;">never</td><td>order is the wire format (Pitfall 0)</td></tr>
+            <tr class="fragment"><td>active merchants</td><td><code>set</code>, custom key</td><td style="color:#ffb86c;">keep</td><td>needs a hand-written hash; 1 lookup/req</td></tr>
+        </tbody>
+    </table>
+    <p class="fragment subtitle">Every pitfall in this talk showed up in one small service.</p>
+    <aside class="notes">
+        "Read the verdict column top to bottom: switch, switch, keep, never, keep. The 'keep' and 'never' rows are the talk's own pitfalls in the wild — rehash spikes and order-dependence. The framework earns its keep here."
+    </aside>
+</section>
+
+<!-- The punchline -->
+<section>
+    <h2>The swap that mattered<br>wasn't a swap.</h2>
+    <p class="fragment" style="margin-top:1em;">The real win was <strong>hoisting the lock out of the loop</strong> &mdash; 10&ndash;27x.</p>
+    <p class="fragment" style="margin-top:0.5em;">The container change that started it all? <span class="subtitle">In the noise.</span></p>
+    <aside class="notes">
+        "And the punchline ties back to the profiling slide: after all that container analysis, the biggest speedup came from moving a lock, not changing a map. Measure first, always."
+    </aside>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 10: Conclusion (5 min) -->
+<!-- ============================================================ -->
+
+<!-- Section Title -->
 <section class="section-title">
     <h2>The Decision Framework</h2>
     <h3>Choosing the Right Container</h3>
 </section>
 
-<!-- Slide 43: Recap -->
+<!-- Slide 38: Recap -->
 <section>
-    <h3>Three Rules</h3>
-    <p><code>std::vector</code> is your default sequence.</p>
-    <p><code>std::unordered_map</code> is your default associative container.</p>
-    <p style="margin-top: 0.5em;">It is <span class="big-o-good">O(1)</span> fast but <span class="big-o">O(n)</span> dangerous.</p>
-    <div style="margin-top: 1em; text-align: left; margin-left: 15%;">
-        <p class="fragment">1. <strong>Bad Hashes</strong> &rarr; use <code>hash_combine</code></p>
-        <p class="fragment">2. <strong>Collisions</strong> &rarr; hash <em>ALL</em> fields</p>
-        <p class="fragment">3. <strong>Rehashing</strong> &rarr; call <code>reserve()</code></p>
+    <h3 style="margin-bottom:0.2em;">Rules[3]</h3>
+    <p style="font-size:0.82em; margin:0.2em 0;"><code>std::vector</code> is your default sequence.</p>
+    <p style="font-size:0.82em; margin:0.2em 0;"><code>std::unordered_map</code> is your default associative container.</p>
+    <p style="font-size:0.82em; margin:0.3em 0;">It is <span class="big-o-good">O(1)</span> fast but <span class="big-o">O(no-no-no)</span> dangerous.</p>
+    <div style="margin-top: 0.4em; text-align: left; margin-left: 15%; font-size: 0.78em;">
+        <p class="fragment" style="margin:0.18em 0;">0. <strong>Order</strong> &rarr; don't swap a map you iterate for output</p>
+        <p class="fragment" style="margin:0.18em 0;">1. <strong>Bad Hashes</strong> &rarr; use <code>hash_combine</code></p>
+        <p class="fragment" style="margin:0.18em 0;">2. <strong>Collisions</strong> &rarr; hash <em>ALL</em> fields</p>
+        <p class="fragment" style="margin:0.18em 0;">3. <strong>Rehashing</strong> &rarr; call <code>reserve()</code></p>
+        <p class="fragment" style="color:#42affa; margin:0.3em 0 0;">&hellip;and <strong>measure</strong> &mdash; the container is rarely your bottleneck.</p>
     </div>
 </section>
 
-<!-- Slide 44: Decision Tree -->
+<!-- Slide 39: Decision Tree -->
 <section>
     <h3>Your New Decision Tree</h3>
-    <div style="text-align: left; margin-left: 5%; font-family: monospace; font-size: 0.6em; line-height: 1.4;">
-        <p style="margin: 0.3em 0;">Need to store items?</p>
-        <p class="fragment" style="margin: 0.3em 0; color: #42affa;">├── Sequence? ──────────────────────── <span style="color: #50fa7b;">std::vector</span> (done)</p>
-        <p class="fragment" style="margin: 0.3em 0;">└── Key-Value?</p>
-        <p class="fragment" style="margin: 0.3em 0; margin-left: 1.5em;">├── Need sorted order? ──YES──── <span style="color: #50fa7b;">std::map</span></p>
-        <p class="fragment" style="margin: 0.3em 0; margin-left: 1.5em;">├── Need reference stability? ── <span style="color: #50fa7b;">std::map</span></p>
-        <p class="fragment" style="margin: 0.3em 0; margin-left: 1.5em;">└── Otherwise ──────────────────── <span style="color: #50fa7b;">std::unordered_map</span></p>
-        <p class="fragment" style="margin: 0.3em 0; margin-left: 3em;">├── Custom key? ──── Write a good hash (<span style="color: #42affa;">hash_combine</span>)</p>
-        <p class="fragment" style="margin: 0.3em 0; margin-left: 3em;">└── Know the size? ── Call <span style="color: #42affa;">reserve()</span></p>
+    <div style="display:flex; justify-content:center;">
+        <svg viewBox="0 0 760 445" xmlns="http://www.w3.org/2000/svg" style="width:100%; max-width:660px; height:auto;">
+            <defs>
+                <marker id="dtarrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-end">
+                    <path d="M0,0 L10,5 L0,10 z" fill="#888"/>
+                </marker>
+            </defs>
+            <g font-family="sans-serif" font-size="14">
+                <!-- start (always visible) -->
+                <rect x="30" y="16" width="240" height="46" rx="8" fill="#26303a" stroke="#888" stroke-width="1.5"/>
+                <text x="150" y="44" fill="#fff" text-anchor="middle" font-weight="600">Need to store items?</text>
+
+                <!-- frag1: sequence -> vector -->
+                <g class="fragment">
+                    <line x1="270" y1="39" x2="498" y2="39" stroke="#888" stroke-width="1.5" marker-end="url(#dtarrow)"/>
+                    <text x="385" y="31" fill="#888" font-size="11" text-anchor="middle">sequence</text>
+                    <rect x="500" y="19" width="220" height="40" rx="20" fill="rgba(80,250,123,0.12)" stroke="#50fa7b" stroke-width="1.5"/>
+                    <text x="610" y="44" fill="#50fa7b" text-anchor="middle" font-family="monospace" font-weight="bold">std::vector — done</text>
+                </g>
+
+                <!-- frag2: key-value down -->
+                <g class="fragment">
+                    <line x1="150" y1="62" x2="150" y2="102" stroke="#888" stroke-width="1.5" marker-end="url(#dtarrow)"/>
+                    <text x="200" y="88" fill="#888" font-size="11" text-anchor="start">key–value</text>
+                </g>
+
+                <!-- frag3: sorted? -> map -->
+                <g class="fragment">
+                    <rect x="30" y="104" width="240" height="44" rx="8" fill="#1e2a38" stroke="#42affa" stroke-width="1.5"/>
+                    <text x="150" y="131" fill="#cfe3ff" text-anchor="middle">Need sorted order?</text>
+                    <line x1="270" y1="126" x2="468" y2="126" stroke="#888" stroke-width="1.5" marker-end="url(#dtarrow)"/>
+                    <text x="300" y="118" fill="#50fa7b" font-size="11">yes</text>
+                    <rect x="470" y="106" width="250" height="40" rx="20" fill="rgba(80,250,123,0.10)" stroke="#50fa7b" stroke-width="1.5"/>
+                    <text x="595" y="131" fill="#50fa7b" text-anchor="middle" font-family="monospace" font-weight="bold">std::map</text>
+                </g>
+
+                <!-- frag4: reference stability? -> map -->
+                <g class="fragment">
+                    <line x1="150" y1="148" x2="150" y2="170" stroke="#888" stroke-width="1.5" marker-end="url(#dtarrow)"/>
+                    <text x="162" y="164" fill="#ff9a9a" font-size="11">no</text>
+                    <rect x="30" y="170" width="240" height="44" rx="8" fill="#1e2a38" stroke="#42affa" stroke-width="1.5"/>
+                    <text x="150" y="197" fill="#cfe3ff" text-anchor="middle">Need reference stability?</text>
+                    <line x1="270" y1="192" x2="468" y2="192" stroke="#888" stroke-width="1.5" marker-end="url(#dtarrow)"/>
+                    <text x="300" y="184" fill="#50fa7b" font-size="11">yes</text>
+                    <rect x="470" y="172" width="250" height="40" rx="20" fill="rgba(80,250,123,0.10)" stroke="#50fa7b" stroke-width="1.5"/>
+                    <text x="595" y="197" fill="#50fa7b" text-anchor="middle" font-family="monospace" font-weight="bold">std::map</text>
+                </g>
+
+                <!-- frag5: concurrent writers? -> shard -->
+                <g class="fragment">
+                    <line x1="150" y1="214" x2="150" y2="236" stroke="#888" stroke-width="1.5" marker-end="url(#dtarrow)"/>
+                    <text x="162" y="230" fill="#ff9a9a" font-size="11">no</text>
+                    <rect x="30" y="236" width="240" height="44" rx="8" fill="#1e2a38" stroke="#42affa" stroke-width="1.5"/>
+                    <text x="150" y="263" fill="#cfe3ff" text-anchor="middle">Concurrent writers?</text>
+                    <line x1="270" y1="258" x2="468" y2="258" stroke="#888" stroke-width="1.5" marker-end="url(#dtarrow)"/>
+                    <text x="300" y="250" fill="#50fa7b" font-size="11">yes</text>
+                    <rect x="470" y="238" width="250" height="40" rx="20" fill="rgba(80,250,123,0.10)" stroke="#50fa7b" stroke-width="1.5"/>
+                    <text x="595" y="263" fill="#50fa7b" text-anchor="middle" font-family="monospace" font-weight="bold">shard / tbb / folly</text>
+                </g>
+
+                <!-- frag6: load once, read-heavy? -> flat -->
+                <g class="fragment">
+                    <line x1="150" y1="280" x2="150" y2="302" stroke="#888" stroke-width="1.5" marker-end="url(#dtarrow)"/>
+                    <text x="162" y="296" fill="#ff9a9a" font-size="11">no</text>
+                    <rect x="30" y="302" width="240" height="44" rx="8" fill="#1e2a38" stroke="#42affa" stroke-width="1.5"/>
+                    <text x="150" y="329" fill="#cfe3ff" text-anchor="middle">Load once, read-heavy?</text>
+                    <line x1="270" y1="324" x2="468" y2="324" stroke="#888" stroke-width="1.5" marker-end="url(#dtarrow)"/>
+                    <text x="300" y="316" fill="#50fa7b" font-size="11">yes</text>
+                    <rect x="470" y="304" width="250" height="40" rx="20" fill="rgba(80,250,123,0.10)" stroke="#50fa7b" stroke-width="1.5"/>
+                    <text x="595" y="329" fill="#50fa7b" text-anchor="middle" font-family="monospace" font-weight="bold">flat_map / flat hash</text>
+                </g>
+
+                <!-- frag7: otherwise -> unordered_map (the default) -->
+                <g class="fragment">
+                    <line x1="150" y1="346" x2="150" y2="372" stroke="#888" stroke-width="1.5" marker-end="url(#dtarrow)"/>
+                    <text x="162" y="364" fill="#ff9a9a" font-size="11">no</text>
+                    <rect x="30" y="372" width="370" height="52" rx="10" fill="rgba(80,250,123,0.20)" stroke="#50fa7b" stroke-width="3"/>
+                    <text x="215" y="395" fill="#50fa7b" text-anchor="middle" font-family="monospace" font-size="17" font-weight="bold">std::unordered_map</text>
+                    <text x="215" y="414" fill="#9fe8b6" text-anchor="middle" font-size="12">your default</text>
+                </g>
+            </g>
+        </svg>
+    </div>
+    <div class="fragment" style="margin-top: 0.8em; margin-left: 5%; margin-right: 5%; background: rgba(66,175,250,0.12); border-left: 3px solid #42affa; padding: 0.6em 1em; font-size: 0.6em; text-align: left;">
+        <strong style="color: #42affa;">Pro tips when you land on <code>unordered_map</code>:</strong>
+        &nbsp; Custom key? &rarr; write a good hash (<code>hash_combine</code>). &nbsp;
+        Know the size? &rarr; call <code>reserve()</code>. &nbsp;
+        Read-heavy + load-once? &rarr; consider <code>flat_map</code> or a flat hash map.
     </div>
     <p class="subtitle">src/12_decision_framework_txn.cpp</p>
     <aside class="notes">
-        Print this out. Pin it to your desk. This is the framework.
+        "Print this out. Pin it to your desk. This is the framework."
     </aside>
 </section>
 
-<!-- Slide 45: Thank You -->
+<!-- Slide 40: Thank You -->
 <section>
     <h3>Stop using <code>std::map</code> "just in case."</h3>
-    <p style="margin-top: 1em;">Start with <code>std::unordered_map</code>.</p>
-    <p>Understand its pitfalls.</p>
-    <p>Write faster, more modern C++.</p>
-    <h2 style="margin-top: 0.5em;">Thank You</h2>
-    <div style="display: flex; align-items: center; justify-content: center; gap: 2em; margin-top: 0.3em;">
-        <div style="display: flex; flex-direction: column; align-items: center; gap: 0.1em;">
-            <img src="Packt_Logo-01.png" style="max-height: 70px;" alt="Packt Logo" />
-            <span style="font-size: 0.45em; color: #ccc;">Coupon:</span>
-            <span style="font-size: 0.65em; color: #42affa; font-weight: bold;">CPPONLINE</span>
-        </div>
-        <img src="o-1-to-o-no-no-no-gh.png" style="max-width: 150px;" alt="GitHub QR Code" />
+    <p style="margin-top: 0.6em; font-size:0.88em;">Start with <code>std::unordered_map</code> &mdash; then master its pitfalls: hash all fields, call <code>reserve()</code>, know when a flat map wins.</p>
+    <p style="font-size:0.88em;">Never swap a map whose <em>order</em> you depend on. And <strong>measure</strong> &mdash; the container is rarely the bottleneck.</p>
+    <p style="font-size:0.88em;">Write faster &mdash; and <em>correct</em> &mdash; modern C++.</p>
+    <h2 style="margin-top: 0.7em;">Thank You</h2>
+    <div style="display: flex; justify-content: center; align-items: center; gap: 2.5em; margin-top: 0.8em;">
+        <img src="o-1-to-o-no-no-no-gh.png" alt="GitHub QR code" style="max-height: 110px;">
+        <img src="Packt_Logo-01.png" alt="Packt Publishing" style="max-height: 55px;">
     </div>
     <aside class="notes">
-        Source code for all examples is in the GitHub repo. QR code links directly to it. Open for Q&amp;A.
+        "Source code for all examples is in the GitHub repo — scan the QR code. Open for Q&amp;A."
     </aside>
+</section>
+
+<!-- Slide 41: Further Watching & Reading -->
+<section>
+    <h3>Further Watching &amp; Reading</h3>
+    <table style="font-size: 0.55em; margin-top: 1em; width: 90%;">
+        <tr>
+            <td style="vertical-align: top; padding: 0.4em 0.6em;"><strong>Matt Kulukundis</strong></td>
+            <td style="padding: 0.4em 0.6em;"><em>Designing a Fast, Efficient, Cache-friendly Hash Table, Step by Step</em><br>CppCon 2017 &mdash; the origin of Google's SwissTable / <code>absl::flat_hash_map</code></td>
+        </tr>
+        <tr>
+            <td style="vertical-align: top; padding: 0.4em 0.6em;"><strong>Malte Skarupke</strong></td>
+            <td style="padding: 0.4em 0.6em;"><em>You Can Do Better than std::unordered_map: New Improvements to Hash Table Performance</em><br>C++Now 2018 &mdash; Robin Hood hashing, benchmarks, and why <code>std::unordered_map</code> is slow</td>
+        </tr>
+        <tr>
+            <td style="vertical-align: top; padding: 0.4em 0.6em;"><strong>Comprehensive Benchmarks</strong></td>
+            <td style="padding: 0.4em 0.6em;"><a href="https://martin.ankerl.com/2022/08/27/hashmap-bench-01/" style="color:#42affa;">martin.ankerl.com &mdash; C++ Hash Map Benchmarks 2022</a></td>
+        </tr>
+        <tr>
+            <td style="vertical-align: top; padding: 0.4em 0.6em;"><strong>Libraries</strong></td>
+            <td style="padding: 0.4em 0.6em;">
+                <code>boost::unordered_flat_map</code> &middot;
+                <code>absl::flat_hash_map</code> &middot;
+                <code>ankerl::unordered_dense</code>
+            </td>
+        </tr>
+    </table>
 </section>
 
 </div>
@@ -909,25 +1471,9 @@ for (int i = 3; i &lt; 20; ++i)
 <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
 <script>
-    // Inject custom styles into the speaker view popup window
-    const _windowOpen = window.open;
-    window.open = function() {
-        const win = _windowOpen.apply(this, arguments);
-        if (win) {
-            const inject = setInterval(() => {
-                try {
-                    if (win.document && win.document.head) {
-                        const s = win.document.createElement('style');
-                        s.textContent = '.speaker-controls-notes .value { font-size: 0.8em !important; }';
-                        win.document.head.appendChild(s);
-                        clearInterval(inject);
-                    }
-                } catch(e) { clearInterval(inject); }
-            }, 200);
-            setTimeout(() => clearInterval(inject), 5000);
-        }
-        return win;
-    };
+    // One-window practice mode: load with ?notes (or ?practice) to render
+    // speaker notes on the slides. Plain load stays clean for the live talk.
+    var practiceMode = /[?&](notes|practice)\b/.test(location.search);
 
     Reveal.initialize({
         hash: true,
@@ -935,6 +1481,8 @@ for (int i = 3; i &lt; 20; ++i)
         showSlideNumber: 'all',
         transition: 'slide',
         transitionSpeed: 'fast',
+        pdfSeparateFragments: false,
+        showNotes: practiceMode,
         plugins: [RevealHighlight, RevealNotes]
     });
 </script>

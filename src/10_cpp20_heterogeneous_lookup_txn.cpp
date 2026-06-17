@@ -33,8 +33,6 @@ struct StringEqual {
     }
 };
 
-constexpr int TPS = 150;
-
 struct MerchantInfo {
     std::string name;
     std::string mcc;
@@ -55,8 +53,7 @@ int main() {
     std::unordered_map<std::string, MerchantInfo> traditional;
     std::unordered_map<std::string, MerchantInfo, StringHash, StringEqual> transparent;
 
-    constexpr int TOTAL_MIDS = 500'000;
-    for (int i = 0; i < TOTAL_MIDS; ++i) {
+    for (int i = 0; i < 10000; ++i) {
         std::string mid = "MID_" + std::to_string(100000 + i);
         MerchantInfo info{"MERCHANT_" + std::to_string(i), "5411", "NEW YORK"};
         traditional[mid] = info;
@@ -64,7 +61,7 @@ int main() {
     }
 
     // In real acquirer code, the merchant_id arrives as a field
-    // parsed from an ISO 8583 message — often as a string_view
+    // parsed from an ISO 8583 message, often as a string_view
     // into the raw message buffer.
     std::string_view mid_from_message = "MID_105000";
     const char* mid_from_c_api = "MID_105000";
@@ -81,21 +78,21 @@ int main() {
     auto it2 = transparent.find(mid_from_message);
     std::cout << "  Found: " << (it2 != transparent.end()) << "\n\n";
 
-    constexpr int TRANSACTIONS = TPS * 60 * 60;
+    constexpr int ITERATIONS = 100000;
 
     double traditional_time = measure_ms([&]() {
         volatile auto it = traditional.find(std::string(mid_from_message));
-    }, TRANSACTIONS);
+    }, ITERATIONS);
 
     double transparent_time = measure_ms([&]() {
         volatile auto it = transparent.find(mid_from_message);
-    }, TRANSACTIONS);
+    }, ITERATIONS);
 
-    std::cout << "Benchmark (" << TRANSACTIONS << " merchant lookups):\n";
+    std::cout << "Benchmark (" << ITERATIONS << " merchant lookups):\n";
     std::cout << "  Traditional: " << traditional_time << " ms\n";
     std::cout << "  Transparent: " << transparent_time << " ms\n";
     std::cout << "  Speedup: " << (traditional_time / transparent_time) << "x\n";
-    std::cout << "\nAt " << TPS << " TPS over an hour, avoiding string allocations on every auth matters.\n";
+    std::cout << "\nAt 10,000+ TPS, avoiding string allocations on every auth matters.\n";
 
     return 0;
 }

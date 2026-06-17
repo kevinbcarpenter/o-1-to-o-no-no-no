@@ -4,12 +4,10 @@
         {
             "label": "Build All Examples",
             "type": "shell",
-            "command": "cmake",
+            "command": "bash",
             "args": [
-                "--build",
-                "${workspaceFolder}/build",
-                "--config",
-                "Debug"
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug"
             ],
             "group": {
                 "kind": "build",
@@ -19,46 +17,381 @@
             "presentation": {
                 "echo": true,
                 "reveal": "always",
-                "focus": true,
+                "focus": false,
                 "panel": "shared"
             }
         },
         {
-            "label": "CMake Configure",
-            "type": "shell",
-            "command": "cmake",
-            "args": [
-                "-B",
-                "${workspaceFolder}/build",
-                "-S",
-                "${workspaceFolder}/src",
-                "-DCMAKE_BUILD_TYPE=Debug"
-            ],
-            "problemMatcher": "$gcc",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": true,
-                "panel": "shared"
-            }
-        },
-        {
-            "label": "CMake Configure & Build",
+            "label": "Build 01_benchmark_map_vs_unordered_txn",
             "type": "shell",
             "command": "bash",
             "args": [
                 "-c",
-                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug"
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 01_benchmark_map_vs_unordered_txn"
             ],
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            },
+            "group": "build",
             "problemMatcher": "$gcc",
             "presentation": {
                 "echo": true,
                 "reveal": "always",
-                "focus": true,
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 02_benchmark_simple_txn",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 02_benchmark_simple_txn"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 03_under_the_hood_txn",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 03_under_the_hood_txn"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 04_pitfall1_bad_hash_txn",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 04_pitfall1_bad_hash_txn"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 05_pitfall1_hash_combine_txn",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 05_pitfall1_hash_combine_txn"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 06_pitfall2_collision_catastrophe_txn",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 06_pitfall2_collision_catastrophe_txn"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 07_pitfall3_rehash_txn",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 07_pitfall3_rehash_txn"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 08_pitfall3_reserve_fix_txn",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 08_pitfall3_reserve_fix_txn"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 09_cpp23_flat_map_txn",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 09_cpp23_flat_map_txn"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 10_cpp20_heterogeneous_lookup_txn",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 10_cpp20_heterogeneous_lookup_txn"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 11_iterator_stability_txn",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 11_iterator_stability_txn"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 12_decision_framework_txn",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 12_decision_framework_txn"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 13_open_addressing_compare",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 13_open_addressing_compare"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 14_memory_overhead",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 14_memory_overhead"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 15_cache_effects",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 15_cache_effects"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 16_bucket_inspection",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 16_bucket_inspection"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 17_hashdos_attack",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 17_hashdos_attack"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 18_sharded_concurrent",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 18_sharded_concurrent"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 19_perf_workload",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 19_perf_workload"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 20_randomized_hashing",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 20_randomized_hashing"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 21_locking_dominates",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 21_locking_dominates"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build 22_ordering_is_load_bearing",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug --target 22_ordering_is_load_bearing"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
                 "panel": "shared"
             }
         },
@@ -68,86 +401,13 @@
             "command": "bash",
             "args": [
                 "-c",
-                "rm -rf ${workspaceFolder}/build && mkdir ${workspaceFolder}/build && cmake -B ${workspaceFolder}/build -S ${workspaceFolder}/src -DCMAKE_BUILD_TYPE=Debug && cmake --build ${workspaceFolder}/build --config Debug"
+                "rm -rf ${workspaceFolder}/build && cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Debug && cmake --build build --config Debug"
             ],
             "problemMatcher": "$gcc",
             "presentation": {
                 "echo": true,
                 "reveal": "always",
-                "focus": true,
-                "panel": "shared"
-            }
-        },
-        {
-            "label": "Build All Examples (Release)",
-            "type": "shell",
-            "command": "cmake",
-            "args": [
-                "--build",
-                "${workspaceFolder}/build",
-                "--config",
-                "Release"
-            ],
-            "problemMatcher": "$gcc",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": true,
-                "panel": "shared"
-            }
-        },
-        {
-            "label": "CMake Configure (Release)",
-            "type": "shell",
-            "command": "cmake",
-            "args": [
-                "-B",
-                "${workspaceFolder}/build",
-                "-S",
-                "${workspaceFolder}/src",
-                "-DCMAKE_BUILD_TYPE=Release"
-            ],
-            "problemMatcher": "$gcc",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": true,
-                "panel": "shared"
-            }
-        },
-        {
-            "label": "CMake Configure & Build (Release)",
-            "type": "shell",
-            "command": "bash",
-            "args": [
-                "-c",
-                "cd ${workspaceFolder} && cmake -B build -S src -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release"
-            ],
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            },
-            "problemMatcher": "$gcc",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": true,
-                "panel": "shared"
-            }
-        },
-        {
-            "label": "Clean Build (Release)",
-            "type": "shell",
-            "command": "bash",
-            "args": [
-                "-c",
-                "rm -rf ${workspaceFolder}/build && mkdir ${workspaceFolder}/build && cmake -B ${workspaceFolder}/build -S ${workspaceFolder}/src -DCMAKE_BUILD_TYPE=Release && cmake --build ${workspaceFolder}/build --config Release"
-            ],
-            "problemMatcher": "$gcc",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": true,
+                "focus": false,
                 "panel": "shared"
             }
         }

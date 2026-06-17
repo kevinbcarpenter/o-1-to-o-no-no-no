@@ -9,7 +9,7 @@
             "args": [],
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "CMake Configure & Build"
+            "preLaunchTask": "Build 01_benchmark_map_vs_unordered_txn"
         },
         {
             "name": "02: Benchmark Simple",
@@ -19,7 +19,7 @@
             "args": [],
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "CMake Configure & Build"
+            "preLaunchTask": "Build 02_benchmark_simple_txn"
         },
         {
             "name": "03: Under the Hood",
@@ -29,7 +29,7 @@
             "args": [],
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "CMake Configure & Build"
+            "preLaunchTask": "Build 03_under_the_hood_txn"
         },
         {
             "name": "04: Pitfall 1 - Bad Hash",
@@ -39,7 +39,7 @@
             "args": [],
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "CMake Configure & Build"
+            "preLaunchTask": "Build 04_pitfall1_bad_hash_txn"
         },
         {
             "name": "05: Pitfall 1 - Hash Combine",
@@ -49,7 +49,7 @@
             "args": [],
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "CMake Configure & Build"
+            "preLaunchTask": "Build 05_pitfall1_hash_combine_txn"
         },
         {
             "name": "06: Pitfall 2 - Collision Catastrophe",
@@ -59,7 +59,7 @@
             "args": [],
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "CMake Configure & Build"
+            "preLaunchTask": "Build 06_pitfall2_collision_catastrophe_txn"
         },
         {
             "name": "07: Pitfall 3 - Rehash",
@@ -69,7 +69,7 @@
             "args": [],
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "CMake Configure & Build"
+            "preLaunchTask": "Build 07_pitfall3_rehash_txn"
         },
         {
             "name": "08: Pitfall 3 - Reserve Fix",
@@ -79,7 +79,7 @@
             "args": [],
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "CMake Configure & Build"
+            "preLaunchTask": "Build 08_pitfall3_reserve_fix_txn"
         },
         {
             "name": "09: C++23 flat_map",
@@ -89,7 +89,7 @@
             "args": [],
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "CMake Configure & Build"
+            "preLaunchTask": "Build 09_cpp23_flat_map_txn"
         },
         {
             "name": "10: C++20 Heterogeneous Lookup",
@@ -99,7 +99,7 @@
             "args": [],
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "CMake Configure & Build"
+            "preLaunchTask": "Build 10_cpp20_heterogeneous_lookup_txn"
         },
         {
             "name": "11: Iterator Stability",
@@ -109,7 +109,7 @@
             "args": [],
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "CMake Configure & Build"
+            "preLaunchTask": "Build 11_iterator_stability_txn"
         },
         {
             "name": "12: Decision Framework",
@@ -119,7 +119,107 @@
             "args": [],
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "CMake Configure & Build"
+            "preLaunchTask": "Build 12_decision_framework_txn"
+        },
+        {
+            "name": "13: Open Addressing Compare",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/13_open_addressing_compare",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Build 13_open_addressing_compare"
+        },
+        {
+            "name": "14: Memory Overhead",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/14_memory_overhead",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Build 14_memory_overhead"
+        },
+        {
+            "name": "15: Cache Effects",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/15_cache_effects",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Build 15_cache_effects"
+        },
+        {
+            "name": "16: Bucket Inspection",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/16_bucket_inspection",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Build 16_bucket_inspection"
+        },
+        {
+            "name": "17: HashDoS Attack",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/17_hashdos_attack",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Build 17_hashdos_attack"
+        },
+        {
+            "name": "18: Sharded Concurrent",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/18_sharded_concurrent",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Build 18_sharded_concurrent"
+        },
+        {
+            "name": "19: Perf Workload",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/19_perf_workload",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Build 19_perf_workload"
+        },
+        {
+            "name": "20: Randomized Hashing",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/20_randomized_hashing",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Build 20_randomized_hashing"
+        },
+        {
+            "name": "21: Locking Dominates",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/21_locking_dominates",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Build 21_locking_dominates"
+        },
+        {
+            "name": "22: Ordering Is Load-Bearing",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/22_ordering_is_load_bearing",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Build 22_ordering_is_load_bearing"
         }
     ]
 }

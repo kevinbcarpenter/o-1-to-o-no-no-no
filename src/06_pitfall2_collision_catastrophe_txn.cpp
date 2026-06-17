@@ -1,5 +1,6 @@
 // Section 4, Pitfall 2: Collision Catastrophe - Acquirer Edition
-// What if every auth request hashes to the same bucket?
+// Hashing on card_type alone: only 4 values (VISA, MC, AMEX, DISCOVER).
+// 5,000 auths across 4 buckets = ~1,250 per chain. Every lookup is O(n).
 
 #include <iostream>
 #include <map>
@@ -9,10 +10,18 @@
 #include <string>
 #include <vector>
 
-// Simulates a terrible hash: all auth codes collide
-struct TerribleAuthHash {
-    size_t operator()(const std::string&) const {
-        return 42;  // Every auth code goes to bucket 42
+static const char* CARD_TYPES[] = {"VISA", "MC", "AMEX", "DISCOVER"};
+
+std::string get_card_type(const std::string& auth_code) {
+    // Simulate: derive card type from the auth code's trailing digit
+    int idx = (auth_code.back() - '0') % 4;
+    return CARD_TYPES[idx];
+}
+
+// Hashes only on card type. 4 distinct values, so 4 buckets carry everything.
+struct CardTypeHash {
+    size_t operator()(const std::string& auth) const {
+        return std::hash<std::string>{}(get_card_type(auth));
     }
 };
 
@@ -27,7 +36,9 @@ double benchmark_lookups(Map& m, const std::vector<std::string>& keys) {
 }
 
 int main() {
-    std::cout << "=== Collision Catastrophe: Auth Lookup Meltdown ===\n\n";
+    std::cout << "=== Collision Catastrophe: Hashing on Card Type Alone ===\n\n";
+    std::cout << "Only 4 card types (VISA, MC, AMEX, DISCOVER).\n";
+    std::cout << "All auths land in one of 4 buckets.\n\n";
 
     std::cout << std::setw(10) << "Auths"
               << std::setw(18) << "std::map"
@@ -38,7 +49,7 @@ int main() {
     for (int n : {100, 500, 1000, 2000, 5000}) {
         std::map<std::string, uint32_t> ordered;
         std::unordered_map<std::string, uint32_t> good_hash;
-        std::unordered_map<std::string, uint32_t, TerribleAuthHash> bad_hash;
+        std::unordered_map<std::string, uint32_t, CardTypeHash> bad_hash;
 
         std::vector<std::string> auth_codes;
         auth_codes.reserve(n);
@@ -51,6 +62,11 @@ int main() {
             bad_hash[auth] = i * 100;
         }
 
+        // Show the damage
+        size_t max_bucket = 0;
+        for (size_t b = 0; b < bad_hash.bucket_count(); ++b)
+            max_bucket = std::max(max_bucket, bad_hash.bucket_size(b));
+
         double map_ms = benchmark_lookups(ordered, auth_codes);
         double good_ms = benchmark_lookups(good_hash, auth_codes);
         double bad_ms = benchmark_lookups(bad_hash, auth_codes);
@@ -58,12 +74,15 @@ int main() {
         std::cout << std::setw(10) << n
                   << std::setw(15) << std::fixed << std::setprecision(2) << map_ms << " ms"
                   << std::setw(15) << good_ms << " ms"
-                  << std::setw(15) << bad_ms << " ms"
-                  << "\n";
+                  << std::setw(15) << bad_ms << " ms";
+        if (n == 5000)
+            std::cout << "   (worst bucket: " << max_bucket << ")";
+        std::cout << "\n";
     }
 
-    std::cout << "\nWith a bad hash, auth lookups degrade to O(n).\n";
-    std::cout << "At 5000 in-flight auths, that's a compliance-level latency breach.\n";
+    std::cout << "\nWith only 4 card types, each bucket holds ~n/4 auths.\n";
+    std::cout << "Every lookup walks a chain of ~1,250 nodes at n=5000.\n";
+    std::cout << "Same mistake as Pitfall 1 (currency), fewer distinct values, worse outcome.\n";
 
     return 0;
 }

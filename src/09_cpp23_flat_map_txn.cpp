@@ -4,6 +4,8 @@
 
 #include <iostream>
 #include <chrono>
+#include <random>
+#include <vector>
 #include <iomanip>
 #include <string>
 
@@ -35,13 +37,13 @@ int main() {
     std::cout << "=== BIN Table: The Perfect flat_map Use Case ===\n\n";
 
 #if HAS_FLAT_MAP
-    constexpr int BINS = 500'000;
+    constexpr int N = 100'000;
 
     std::map<std::string, BinInfo> tree_map;
     std::flat_map<std::string, BinInfo> flat;
     std::unordered_map<std::string, BinInfo> hash_map;
 
-    for (int i = 0; i < BINS; ++i) {
+    for (int i = 0; i < N; ++i) {
         char bin[9];
         snprintf(bin, sizeof(bin), "%08d", i);
         BinInfo info{"ISSUER_" + std::to_string(i % 500),
@@ -66,10 +68,10 @@ int main() {
         for (const auto& [bin, info] : hash_map) sink += info.issuer.size();
     });
 
-    std::cout << "Iteration over " << BINS << " BIN entries:\n";
+    std::cout << "Iteration over " << N << " BIN entries:\n";
     std::cout << std::fixed << std::setprecision(2);
     std::cout << "  std::map:           " << map_iter << " ms\n";
-    std::cout << "  std::flat_map:      " << flat_iter << " ms (cache-friendly!)\n";
+    std::cout << "  std::flat_map:      " << flat_iter << " ms (contiguous storage)\n";
     std::cout << "  std::unordered_map: " << hash_iter << " ms\n\n";
 
     std::cout << "BIN tables are loaded once, queried millions of times.\n";
